@@ -1,7 +1,9 @@
 # sims4-vr
-Sims 4 plugin that adds VR functionality
+Sims 4 plugin that adds VR functionality to sims 4.
 
-The plugin works like a bridge betwen sims 4 and VorpX by using The VorpX API. You need to have VorpX for the plugin to work.
+Built for oculus quest 2 but should work with other steamvr compatible headsets to.
+
+The plugin works like a bridge betwen sims 4 and VorpX by using the VorpX API. You need to have VorpX for the plugin to work.
 The plugin only works on the 64bit windows version of sims 4.
 
 sims4-vr plugin adds full headset tracking and motion controller support to sims 4.
