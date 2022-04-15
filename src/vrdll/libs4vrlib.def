@@ -1,0 +1,9 @@
+EXPORTS
+    init @1
+    set_added_rotation @2
+    set_offset @3
+    set_origin @4
+    set_scale @5
+    set_struct_location @6
+    set_vr_active @7
+    update @8
