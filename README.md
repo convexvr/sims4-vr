@@ -10,6 +10,8 @@ sims4-vr plugin adds full headset tracking and motion controller support to sims
 
 
 ## Install
+https://github.com/convexvr/sims4-vr/raw/main/convexvr_sims4-vr-bundle.zip
+
 Unzip the **convexvr_sims4-vr-bundle.zip** zip file and place the **convexvr_sims4-vr** folder in the mods folder  **C:\Users\\$USER\Documents\Electronic Arts\The Sims 4\Mods**
 
 ## Sims4 settings and VorpX settings
