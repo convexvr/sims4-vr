@@ -142,11 +142,11 @@ game_camera_scale = 0.905
 game_camera_scalew = 0.68
 
 #the quest has 93 deg vertical fov
-game_camera_scale = math.atan(math.radians(93)/2)
+#game_camera_scale = math.atan(math.radians(93)/2)
 
 
-game_camera_scale = math.atan(math.radians(136)/2)#But for some reason 136 deg gives better result
-game_camera_scalew = game_camera_scale/(1024/768)
+#game_camera_scale = math.atan(math.radians(136)/2)#But for some reason 136 deg gives better result
+#game_camera_scalew = game_camera_scale/(1024/768)
 
 org_code = 4545
 
@@ -162,13 +162,17 @@ def scl(scale_str: str="", _connection=None):
 @sims4.commands.Command('gscale', command_type=(sims4.commands.CommandType.Live))
 def gscale(scale_str: str="", _connection=None):
     global game_camera_scale
+    global game_camera_scalew
     game_camera_scale = float(scale_str)
+    vrdll.set_scale(game_camera_scalew, game_camera_scale)
 
 #Set camera scaling left and right
 @sims4.commands.Command('gscalew', command_type=(sims4.commands.CommandType.Live))
-def gscale(scale_str: str="", _connection=None):
+def gscalew(scale_str: str="", _connection=None):
     global game_camera_scalew
+    global game_camera_scale
     game_camera_scalew = float(scale_str)
+    vrdll.set_scale(game_camera_scalew, game_camera_scale)
 
 
 #Debug: add a render struct address manually
@@ -403,6 +407,51 @@ def unpatch(_connection=None):
         process.writeByte(code_injection_base_address, org_code)#Write new code
         process.close()
         is_patched = False
+
+
+#For some reason the scaling is overwriten by some operations, so we patch those ops away
+@sims4.commands.Command('patch2', command_type=(sims4.commands.CommandType.Live))
+def patch2_togle(_connection=None):
+    global sims_camera_address
+    global original_codes
+    global patch2_active
+    #output = sims4.commands.CheatOutput(_connection)
+    #write 4 bytes of NOP ie byte 0x90 to these locations 
+    
+    
+    #When you patch the scale the mouse ponter no longer points to it "correct" position
+    patchlocations = [
+        0x140FC1B48, #scaling upp and down
+        0x140FC1B35 #scaling left and right
+
+    ]
+    patches = [
+        b'\x90\x90\x90\x90\x90\x90\x90',
+        b'\x90\x90\x90\x90'
+    ]
+    
+    
+    
+    
+    rwm = ReadWriteMemory()
+    process = rwm.get_process_by_id(pid)
+    process.get_all_access_handle()
+    
+    if not patch2_active:
+        for x, patchlocation in enumerate(patchlocations):
+            original_codes[x] = process.readByte(patchlocation, len(patches[x]))
+        
+        for x, patchlocation in enumerate(patchlocations):
+            process.writeByte(patchlocation, patches[x])#Write NOP's
+        
+        patch2_active = True
+    else:
+        for x, patchlocation in enumerate(patchlocations):
+            process.writeByte(patchlocation, original_codes[x])
+        patch2_active = False
+        
+    process.close()
+
 
 #sets up python connection to vorpx.
 def initate_vorpx():
@@ -841,7 +890,7 @@ def vr_act(load_fresh=True,_connection=None):
             headset_offset.y = headset_position_uncorected.y
             headset_offset.z = headset_position_uncorected.z
             vrdll.set_offset(headset_offset.x, headset_offset.y, headset_offset.z)
-    
+    patch2_togle()
 
 #Debug command to allow executing simple python commands from inside the game
 @sims4.commands.Command('py', command_type=sims4.commands.CommandType.Live)

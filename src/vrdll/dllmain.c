@@ -117,7 +117,7 @@ __declspec(dllexport) int set_scale(float width, float height){
 	width_scale = width;
 	FILE *fp = fopen("C:\\s4\\debug_c.txt", "a");
 	if(fp){
-		fprintf(fp, "set_scale: %f\n", height_scale);
+		fprintf(fp, "set_scale: %f, %f\n", width_scale, height_scale);
 		fclose(fp);
 	}
 }
