@@ -8,5 +8,6 @@ There are some issues with scaling and projection that causes the world to warp 
 and game_camera_scalew to fix. The exact values that remove the warping depends on your headsets field of view and the resolution of the game.
 
 ### Updates to the sims4
-When the sims exacutable is updated the mod needs to be updated to match the new exacutable. The python variable code_injection_base_address
+When the sims exacutable is updated the mod needs to be updated to match the new exacutable. The python variable **code_injection_base_address**
 contains the address to the place where the game needs to be patched. I have used cheatengine in the past to locate the correct place in the executable.
+In the python function patch2_togle there is also 2 addresses that points to the executable that needs to be updated when the sims4 executable has been updated. The mod works without that patch but there is more warping than what is preferable.
