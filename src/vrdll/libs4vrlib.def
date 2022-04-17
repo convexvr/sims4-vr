@@ -3,7 +3,8 @@ EXPORTS
     set_added_rotation @2
     set_offset @3
     set_origin @4
-    set_scale @5
-    set_struct_location @6
-    set_vr_active @7
-    update @8
+    set_position_scale @5
+    set_scale @6
+    set_struct_location @7
+    set_vr_active @8
+    update @9

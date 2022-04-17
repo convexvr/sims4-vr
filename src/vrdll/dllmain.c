@@ -55,6 +55,7 @@ int vr_active = 0;
 float height_scale = 4545;
 float width_scale = 4545;
 
+float position_scale = 1;
 float added_rotation = 0;
 
 float offset_x = 0;
@@ -96,6 +97,17 @@ __declspec(dllexport) int set_vr_active(int num){
 	FILE *fp = fopen("C:\\s4\\debug_c.txt", "a");
 	if(fp){
 		fprintf(fp, "set_vr_active: %i\n", vr_active);
+		fclose(fp);
+	}
+}
+
+
+__declspec(dllexport) int set_position_scale(float num){
+	position_scale = num;
+	
+	FILE *fp = fopen("C:\\s4\\debug_c.txt", "a");
+	if(fp){
+		fprintf(fp, "position_scale: %f\n", position_scale);
 		fclose(fp);
 	}
 }
@@ -301,9 +313,9 @@ __declspec(dllexport) int update()
 	
 	vpxfloat3 corected_headsetpos = vpxYawCorrection(headsetpos, added_rotation);
 	
-	float new_cam_x = origin_x + corected_headsetpos.x;
-	float new_cam_y = origin_y + corected_headsetpos.y;
-	float new_cam_z = origin_z - corected_headsetpos.z;
+	float new_cam_x = origin_x + (position_scale*corected_headsetpos.x);
+	float new_cam_y = origin_y + (position_scale*corected_headsetpos.y);
+	float new_cam_z = origin_z - (position_scale*corected_headsetpos.z);
 	
 	if (structpos == 4545){
 		return 0;

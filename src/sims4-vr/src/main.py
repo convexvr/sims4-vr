@@ -112,6 +112,8 @@ origin_sims_camera_rot = 0
 sims_camera_address = ctypes.c_ulonglong(4545)
 sims_camera_address_compare = ctypes.c_ulonglong(4646)
 
+Scale_patch_address1 = 0x140FC1B48
+Scale_patch_address2 = 0x140FC1B35
 
 #code_injection_base_address is the address where we patch the exacutable to change the games behavior 
 code_injection_base_address = 0x1401C25BE
@@ -141,8 +143,16 @@ game_camera_scalew = 0.5
 game_camera_scale = 0.905
 game_camera_scalew = 0.68
 
+#when image zoom is 1.073
+game_camera_scale = 0.83
+game_camera_scalew = 0.633
+
 #the quest has 93 deg vertical fov
 #game_camera_scale = math.atan(math.radians(93)/2)
+
+
+#the quest has 96.0160446166992 deg vertical fov according to vorpx
+#game_camera_scale = math.atan(math.radians(96.0160446166992)/2)
 
 
 #game_camera_scale = math.atan(math.radians(136)/2)#But for some reason 136 deg gives better result
@@ -150,6 +160,29 @@ game_camera_scalew = 0.68
 
 org_code = 4545
 
+
+def dump_mem():
+    global Scale_patch_address1
+    global Scale_patch_address1
+    global code_injection_base_address
+    global pid
+    
+    patchlocations = [
+        Scale_patch_address1, #scaling upp and down
+        Scale_patch_address2, #scaling left and right
+        code_injection_base_address
+    ]
+    rwm = ReadWriteMemory()
+    process = rwm.get_process_by_id(pid)
+    process.get_all_access_handle()
+    
+    for x, patchlocation in enumerate(patchlocations):
+        org_dat = process.readByte(patchlocation, 32)
+        dprnt("patchlocation: "+str(x)+"("+hex(patchlocation)+") = "+org_dat.hex())
+        
+    process.close()
+
+dump_mem()
 
 original_codes = [0,0,0,0,0,0,0,0]
 
@@ -174,6 +207,12 @@ def gscalew(scale_str: str="", _connection=None):
     game_camera_scalew = float(scale_str)
     vrdll.set_scale(game_camera_scalew, game_camera_scale)
 
+#prints the scale variables
+@sims4.commands.Command('ptscale', command_type=(sims4.commands.CommandType.Live))
+def ptscale(_connection=None):
+    global game_camera_scalew
+    global game_camera_scale
+    dprnt("scale: "+str(game_camera_scale)+", "+str(game_camera_scalew))
 
 #Debug: add a render struct address manually
 @sims4.commands.Command('addptr', command_type=(sims4.commands.CommandType.Live))
@@ -414,6 +453,8 @@ def unpatch(_connection=None):
 def patch2_togle(_connection=None):
     global sims_camera_address
     global original_codes
+    global Scale_patch_address1
+    global Scale_patch_address2
     global patch2_active
     #output = sims4.commands.CheatOutput(_connection)
     #write 4 bytes of NOP ie byte 0x90 to these locations 
@@ -421,8 +462,8 @@ def patch2_togle(_connection=None):
     
     #When you patch the scale the mouse ponter no longer points to it "correct" position
     patchlocations = [
-        0x140FC1B48, #scaling upp and down
-        0x140FC1B35 #scaling left and right
+        Scale_patch_address1, #scaling upp and down
+        Scale_patch_address2 #scaling left and right
 
     ]
     patches = [
@@ -701,6 +742,7 @@ def on_game_frame():
     
     if vorpx_loaded:
         controller_state = _vpxGetControllerState(1)#get right controler state
+        controller_state_left = _vpxGetControllerState(0)#get left controler state
         
         controler_rotation = _vpxGetFloat3(203)
         #controler_pos = _vpxGetFloat3(205)##if we want to create shoot to location
@@ -773,6 +815,15 @@ def on_game_frame():
             last_btns_press = controller_state.ButtonsPressed
             dprnt("button change: "+str(last_btns_press))
         
+        
+        if controller_state_left.StickX > 0.5 or controller_state_left.StickX < -0.5:
+            game_camera_scalew += controller_state_left.StickX*0.001
+            vrdll.set_scale(game_camera_scalew, game_camera_scale)
+            
+        if controller_state_left.StickY > 0.5 or controller_state_left.StickY < -0.5:
+            game_camera_scale += controller_state_left.StickY*0.001
+            vrdll.set_scale(game_camera_scalew, game_camera_scale)
+            
         #When holding grap we move the cursor
         mouse_speed = 20
         if holding_grab:
