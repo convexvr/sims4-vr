@@ -164,7 +164,3 @@ dmypy.json
 cython_debug/
 
 ################################################################################
-
-# Settings are specific to each computer, we only want the settings template
-# to be checked in
-settings.py

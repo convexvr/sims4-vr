@@ -25,6 +25,8 @@ float i;
 
 int last_s = 0;
 int frames = 0;
+int VorpXFrame = 0;
+vpxfloat3 last_headsetrot;
 
 __declspec(dllexport) int init()
 {
@@ -303,6 +305,19 @@ __declspec(dllexport) int update()
 {
 	FILE *fp;
 
+	int curVorpXFrame = vpxGetCurrentVorpFrame();
+	
+	if(VorpXFrame != curVorpXFrame){
+		//vpxfloat3 headsetrot = vpxGetHeadsetRotationEuler();
+		vpxfloat3 delta_rot;
+		delta_rot.x = 0;//headsetrot.x - last_headsetrot.x;
+		delta_rot.y = 0;//headsetrot.y - last_headsetrot.y;
+		delta_rot.z = 0;//headsetrot.z - last_headsetrot.z;
+		//vpxSetGameCamRotationDeltaEuler(delta_rot);//What does vpxSetGameCamRotationDeltaEuler acctually do...?
+		
+		VorpXFrame = curVorpXFrame;
+		//last_headsetrot = headsetrot;
+	}
 
 	vpxfloat3 headsetpos = vpxGetHeadsetPosition();
 	vpxfloat4 headsetrot =  vpxGetHeadsetRotationQuaternion();
@@ -379,7 +394,7 @@ __declspec(dllexport) int update()
     	
     	//fprintf(fp, "headsetrot: %f %f %f %f\n", headsetrot.w, headsetrot.x, headsetpos.y, headsetpos.z);
     	if(fp){
-    		fprintf(fp, "fps: %i\n", frames);
+    		fprintf(fp, "fps: %i VorpXframe:  %i\n", frames, VorpXFrame);
 		}
     	
     	

@@ -147,6 +147,10 @@ game_camera_scalew = 0.68
 game_camera_scale = 0.83
 game_camera_scalew = 0.633
 
+#when image zoom is 0.795
+game_camera_scale = 1.1298482051491667
+game_camera_scalew = 0.8552593232989314
+
 #the quest has 93 deg vertical fov
 #game_camera_scale = math.atan(math.radians(93)/2)
 
@@ -285,7 +289,7 @@ def tsl(_connection=None):
                 chosen_structs.append(structpos)
                 sims_camera_address_compare.value = structpos
                 first = False
-            vrdll.set_struct_location(structpos)#The last struct seams to be he one acctually controlling the camera
+            vrdll.set_struct_location(structpos)#The last struct seams to be the one acctually controlling the camera
             dprnt("chosen struct: "+ hex(structpos)+ "pos: "+str(x_pos.value)+", "+str(y_pos.value)+", "+str(z_pos.value))
 
 vrdll = ctypes.CDLL(ModFolder+"\\s4vrlib.dll")
@@ -293,6 +297,7 @@ vrdll.set_scale.argtypes = [ctypes.c_float, ctypes.c_float]
 vrdll.set_offset.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float]
 vrdll.set_origin.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float]
 vrdll.set_added_rotation.argtypes = [ctypes.c_float]
+vrdll.set_position_scale.argtypes = [ctypes.c_float]
 vrdll.set_struct_location.argtypes = [ctypes.c_ulonglong]
 
 vrdll.init()
@@ -307,12 +312,11 @@ if using_dll:
     address_to_update_function = ctypes.c_ulonglong.from_address(ctypes.addressof(vrdll.update)).value
 
 #Creates a callable function in memory
-#Fix the broken VirtualAllocEx before we use it
 def create_x86_x64_function(sc):
     rwm = ReadWriteMemory()
     process = rwm.get_process_by_id(pid)
     process.get_all_access_handle()
-    ctypes.windll.kernel32.VirtualAllocEx.restype = ctypes.c_ulonglong
+    ctypes.windll.kernel32.VirtualAllocEx.restype = ctypes.c_ulonglong#Fix the broken VirtualAllocEx before we use it
     memadr = ctypes.windll.kernel32.VirtualAllocEx(process.handle,0, len(sc), 0x3000, 0x40)
     process.writeByte(memadr, sc)
     process.close()
@@ -407,7 +411,7 @@ def patch(_connection=None):
         
         
         
-        #when we separate it in to two parts cause i dont know how to write it as one chunk
+        #then we separate it in to two parts
         first_sc = int.from_bytes(sc[0:8],'big')
         second_sc = int.from_bytes(sc[8:16],'big')
         saved_first = first.value
@@ -599,12 +603,12 @@ def initate_vorpx():
                 _vpxSetInt(206, 1)#Force Controller rendering
             
             else:
-                print("failed to open pmf: "+str(pfm))
+                dprnt("failed to open pmf: "+str(pfm))
             ctypes.windll.kernel32.CloseHandle(hmf)
         else:
-            print("failed to open hmf: "+str(hmf))
+            dprnt("failed to open hmf: "+str(hmf))
     except Exception as e:
-        print("Exception: "+ str(e))
+        dprnt("Exception: "+ str(e))
 
 initate_vorpx()
 
@@ -663,7 +667,7 @@ def on_gfx_frame():
     
     if vr_active:
         
-        #We should read in game_desired_cam_pos here it is avalible in memmory at this point 2022-01
+        #We should read in game_desired_cam_pos here it is avalible in memmory at this point 2022-01 Nahhh not any longer 2022-04 that would need to be done in the vrdll
         
         #save for use when reseting position
         headset_position_uncorected = sims4.math.Vector3(headset_position_struct.x, headset_position_struct.y, headset_position_struct.z)
@@ -682,13 +686,16 @@ def togle_fps_mode():
 
 #Trys to figure out if we are in "sims4 First person camera mode"
 def is_in_fps_mode():
-
     actual_cam_pos = get_cam_pos()
     if round(actual_cam_pos.x,2) == round(camera._camera_position.x,2) and round(actual_cam_pos.y,2) == round(camera._camera_position.y,2) and round(actual_cam_pos.z,2) == round(camera._camera_position.z,2):
         return False
     return True 
 
-
+#the FireID is the id of some object that will be placed on the position of the right controller. Used for scale debuging.
+FireID = 43#0x097c0d80186b3304
+def set_fireid(uf):
+    global FireID
+    FireID = uf
 tab_active = False
 #When the game informs us that it has executed a game frame
 def on_game_frame():
@@ -711,7 +718,7 @@ def on_game_frame():
     global extra_rotate
     global origin_rotate
     global controller_state
-    
+    global FireID
     global sims_camera_address
     global known_sruct_locations
     
@@ -745,7 +752,27 @@ def on_game_frame():
         controller_state_left = _vpxGetControllerState(0)#get left controler state
         
         controler_rotation = _vpxGetFloat3(203)
-        #controler_pos = _vpxGetFloat3(205)##if we want to create shoot to location
+        controler_pos = _vpxGetFloat3(205)##if we want to create shoot to location
+
+        controler_pos.x -= headset_offset.x
+        controler_pos.y -= headset_offset.y
+        controler_pos.z -= headset_offset.z
+        #For debuging i would like to draw the controllers in game
+        #Not sure how to get a model of the controllers in to the game and then how to create an instance of the models
+        #so we jsut use a firealarm that is already in the game to debug the controler position
+        controler_pos_corrected = _vpxYawCorrection(controler_pos, float(origin_rotate))
+        if origin_sims_camera_pos != 0:
+            new_cont_x = origin_sims_camera_pos.x + (controler_pos_corrected.x);
+            new_cont_y = origin_sims_camera_pos.y + (controler_pos_corrected.y);
+            new_cont_z = origin_sims_camera_pos.z - (controler_pos_corrected.z);
+            
+            
+            
+            if FireID != 43:
+                firealarm = services.object_manager().get(FireID)
+                FireLocat = firealarm.location
+                FireLocat[0].translation = sims4.math.Vector3(new_cont_x, new_cont_y, new_cont_z)
+                firealarm.set_location(FireLocat)
         
         if controller_state.ButtonsPressed != 0:
             hold_b_button_frame_counter += 1

@@ -18,7 +18,7 @@ Unzip the **convexvr_sims4-vr-bundle.zip** zip file and place the **convexvr_sim
 ### Vorpx settings
 ```
 Full VR Mode
-3D-Strength/Scale: 0.14
+3D-Strength/Scale: 0.13
 3D-FOV Enhancment: 0
 Camera Height Modifier: 0
 Edge Peak Strength Modifier 0.31
@@ -26,7 +26,7 @@ Game hud scale: 1
 Game hudscale  horizontal 0.75
 Game hud depth: 0.5
 Aspect ratio: 1:1
-Image zoom: 1.073
+Image zoom: 0.795
 Right controller triger button mapped to: left click
 ```
 ### Sims 4 settings:
