@@ -112,11 +112,11 @@ origin_sims_camera_rot = 0
 sims_camera_address = ctypes.c_ulonglong(4545)
 sims_camera_address_compare = ctypes.c_ulonglong(4646)
 
-Scale_patch_address1 = 0x140FC1B48
-Scale_patch_address2 = 0x140FC1B35
+Scale_patch_address1 = 0x141010608
+Scale_patch_address2 = 0x1410105F5
 
 #code_injection_base_address is the address where we patch the exacutable to change the games behavior 
-code_injection_base_address = 0x1401C25BE
+code_injection_base_address = 0x1401F810E
 code_injection_base2_address = code_injection_base_address - 46
 
 #then we get references to the location where we will patch these are locations in the code that i found with cheat engine
