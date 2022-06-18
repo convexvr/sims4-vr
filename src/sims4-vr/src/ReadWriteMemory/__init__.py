@@ -145,6 +145,45 @@ class Process(object):
                      'Name': self.name, 'ErrorCode': self.error_code}
             ReadWriteMemoryError(error)
 
+    def readByte2(self, lp_base_address: int, length: int = 1) -> bytes:
+        """
+        Read data from the process's memory.
+        :param lp_base_address: The process's pointer {don't use offsets}
+        :param length: The length of the bytes to read
+        :return: The data from the process's memory if succeed if not raises an exception.
+        """
+        try:
+        
+        
+        
+            read_buffer = ctypes.create_string_buffer(length)
+            lp_number_of_bytes_read = ctypes.c_ulong(0)
+            #ctypes.windll.kernel32.ReadProcessMemory.argtypes = [ctypes.c_uint64]
+            ctypes.windll.kernel32.ReadProcessMemory(self.handle, ctypes.c_void_p(lp_base_address), read_buffer, length, lp_number_of_bytes_read)
+            bufferArray = bytes(read_buffer)
+            return bufferArray
+            #read_buffer = ctypes.create_string_buffer(length)#ctypes.c_ubyte()
+            #lp_buffer = ctypes.byref(read_buffer)
+            #n_size = ctypes.sizeof(read_buffer)
+            #lp_number_of_bytes_read = ctypes.c_ulong(0)
+            #bytesr = b''
+            #x = 0
+            #while length:
+            #    ctypes.windll.kernel32.ReadProcessMemory(self.handle, ctypes.c_void_p(lp_base_address + x), lp_buffer,
+            #                                             length, lp_number_of_bytes_read)
+            #    length -= lp_number_of_bytes_read.value
+            #    x += lp_number_of_bytes_read.value
+            #    bytesr += bytes([read_buffer.value])
+            #return bytesr
+        except (BufferError, ValueError, TypeError) as error:
+            if self.handle:
+                self.close()
+            self.error_code = self.get_last_error()
+            error = {'msg': str(error), 'Handle': self.handle, 'PID': self.pid,
+                     'Name': self.name, 'ErrorCode': self.error_code}
+            ReadWriteMemoryError(error)
+
+
     def readByte(self, lp_base_address: int, length: int = 1) -> List[hex]:
         """
         Read data from the process's memory.

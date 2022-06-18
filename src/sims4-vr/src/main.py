@@ -117,6 +117,48 @@ Scale_patch_address2 = 0x1410105F5
 
 #code_injection_base_address is the address where we patch the exacutable to change the games behavior 
 code_injection_base_address = 0x1401F810E
+
+
+def find_pach_locations():
+    global Scale_patch_address1
+    global Scale_patch_address2
+    global code_injection_base_address
+    global pid
+    
+    rwm = ReadWriteMemory()
+    process = rwm.get_process_by_id(pid)
+    process.get_all_access_handle()
+    
+    
+    #Read in loots of memmory so we can search it
+    dprnt("Reading memmory")
+    memmory = process.readByte2(0x140000000, 0x144000000-0x140000000)
+    dprnt("Done reading memmory")
+    process.close()
+    
+    #Search for code in the binary that is located where we want to patch the binary
+    Scale_patch_address1 = memmory.find(b'\x0f\x11\x91\x80\x00\x00\x00\x41\x0f\x28\xd2\x0f\x14\xd7\xf3\x0f\x59\xf4\x41\x0f\x28\xe3\xf3\x0f\x59\xc5\xf3\x41\x0f\x5e\xe1\x0f', 0)
+    if Scale_patch_address1 == -1:
+        dprint("could not find Scale_patch_address1")
+    Scale_patch_address1 += 0x140000000
+    
+    Scale_patch_address2 = memmory.find(b'\x0f\x11\x51\x70\x0f\x57\xd2\x0f\x14\xc8\x0f\x28\xc4\x0f\x14\xd1\x0f\x57\xc9\x0f\x11\x91\x80\x00\x00\x00\x41\x0f\x28\xd2\x0f\x14', 0)
+    if Scale_patch_address2 == -1:
+        dprint("could not find Scale_patch_address2")
+    Scale_patch_address2 += 0x140000000
+    
+    code_injection_base_address = memmory.find(b'\x0f\x11\x41\x30\x0f\x10\x4a\x40\x0f\x11\x49\x40\x0f\x10\x42\x50\x0f\x11\x41\x50\x0f\x10\x4a\x60\x0f\x11\x49\x60\x0f\x10\x42\x70', 0)
+    if code_injection_base_address == -1:
+        dprint("could not find code_injection_base_address")
+    code_injection_base_address += 0x140000000
+    
+    dprnt("Scale_patch_address1: "+hex(Scale_patch_address1)+" Scale_patch_address1: "+hex(Scale_patch_address2)+" Scale_patch_address2: "+hex(code_injection_base_address))
+    
+    
+
+
+find_pach_locations()
+
 code_injection_base2_address = code_injection_base_address - 46
 
 #then we get references to the location where we will patch these are locations in the code that i found with cheat engine
@@ -165,9 +207,11 @@ game_camera_scalew = 0.8552593232989314
 org_code = 4545
 
 
+
+
 def dump_mem():
     global Scale_patch_address1
-    global Scale_patch_address1
+    global Scale_patch_address2
     global code_injection_base_address
     global pid
     
