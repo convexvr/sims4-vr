@@ -68,6 +68,14 @@ float origin_x = 0;
 float origin_y = 0;
 float origin_z = 0;
 
+float last_x = 0;
+float last_y = 0;
+float last_z = 0;
+
+float games_x = 0;
+float games_y = 0;
+float games_z = 0;
+
 
 __declspec(dllexport) int set_offset(float x, float y, float z){
 	offset_x = x;
@@ -281,9 +289,20 @@ int apply_mat(UINT64 structp, float x, float y, float z, float3x3 mat){
 	y_fwvec = (float*)structp+(84/4);
 	z_fwvec = (float*)structp+(88/4);
 	
+	//if the cordinates have changed and we have not alterd them, we are looking at the games desired camera position
+	if(*x_pos != last_x || *y_pos != last_y  || *z_pos != last_z ){
+		games_x = *x_pos;
+		games_y = *y_pos;
+		games_z = *z_pos;
+	}
+	
 	*x_pos = x;
 	*y_pos = y;
 	*z_pos = z;
+	
+	last_x = x;
+	last_y = y;
+	last_z = y;
 	
 	*height_scalep = height_scale;
 	*width_scalep = width_scale;
