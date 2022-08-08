@@ -328,7 +328,7 @@ def tsl(_connection=None):
         y_pos = ctypes.c_float.from_address(structpos+100)
         z_pos = ctypes.c_float.from_address(structpos+104)
 
-        if round(x_pos.value,2) == round(camera._camera_position.x,2) and round(y_pos.value,2) == round(camera._camera_position.y,2) and round(z_pos.value,2) == round(camera._camera_position.z,2):
+        if (not math.isnan(x_pos.value)) and round(x_pos.value,2) == round(camera._camera_position.x,2) and round(y_pos.value,2) == round(camera._camera_position.y,2) and round(z_pos.value,2) == round(camera._camera_position.z,2):
             if first:
                 chosen_structs.append(structpos)
                 sims_camera_address_compare.value = structpos
@@ -902,12 +902,13 @@ def on_game_frame():
         else:
             #should move in the 3D direction of the controller but we will start with just camera direction first on the plane
             if controller_state.StickY != 0.0:
-                cos_len = math.cos(math.radians(controler_rotation.x))
-                origin_sims_camera_pos.x += math.sin(math.radians(controler_rotation.y+origin_rotate))*cos_len*0.05*controller_state.StickY
-                origin_sims_camera_pos.z += -math.cos(math.radians(controler_rotation.y+origin_rotate))*cos_len*0.05*controller_state.StickY
-                origin_sims_camera_pos.y -= math.sin(math.radians(controler_rotation.x))*0.05*controller_state.StickY
-                dprnt("controler rot: x: "+str(controler_rotation.x)+" y: "+str(controler_rotation.y))
-                vrdll.set_origin(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
+                if origin_sims_camera_pos != 0:
+                    cos_len = math.cos(math.radians(controler_rotation.x))
+                    origin_sims_camera_pos.x += math.sin(math.radians(controler_rotation.y+origin_rotate))*cos_len*0.05*controller_state.StickY
+                    origin_sims_camera_pos.z += -math.cos(math.radians(controler_rotation.y+origin_rotate))*cos_len*0.05*controller_state.StickY
+                    origin_sims_camera_pos.y -= math.sin(math.radians(controler_rotation.x))*0.05*controller_state.StickY
+                    dprnt("controler rot: x: "+str(controler_rotation.x)+" y: "+str(controler_rotation.y))
+                    vrdll.set_origin(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
             
             if controller_state.StickX > 0.5 or controller_state.StickX < -0.5:
                 
