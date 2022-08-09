@@ -833,10 +833,11 @@ def on_game_frame():
                     dprnt("button was clicked quickly: "+str(last_btns_press))
                     #if last_btns_press == 1:#A was pressed short, click mouse
                     #    pyautogui.click()
-                    if last_btns_press == 1:#A was pressed long, reset position
-                        cam_syncing = True
-                        before_sync_cam_location = get_cam_pos()
-                        vr_act()#disable vr and locate real cam
+                    if last_btns_press == 1:#A was pressed short, reset position
+                        if origin_sims_camera_pos != 0:
+                            cam_syncing = True
+                            before_sync_cam_location = get_cam_pos()
+                            vr_act()#disable vr and locate real cam
                     
                     if last_btns_press == 2:#B was pressed short, initate vr (should also  press tab+shit to enter fps mode)
                         dprnt("#B was pressed short, start vr")
