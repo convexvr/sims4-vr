@@ -132,7 +132,8 @@ def find_pach_locations():
     
     #Read in loots of memmory so we can search it
     dprnt("Reading memmory")
-    memmory = process.readByte2(0x140000000, 0x144000000-0x140000000)
+    mem_search_start_addr = 0x140000000
+    memmory = process.readByte2(mem_search_start_addr, 0x144000000-mem_search_start_addr)
     dprnt("Done reading memmory")
     process.close()
     
@@ -140,17 +141,17 @@ def find_pach_locations():
     Scale_patch_address1 = memmory.find(b'\x0f\x11\x91\x80\x00\x00\x00\x41\x0f\x28\xd2\x0f\x14\xd7\xf3\x0f\x59\xf4\x41\x0f\x28\xe3\xf3\x0f\x59\xc5\xf3\x41\x0f\x5e\xe1\x0f', 0)
     if Scale_patch_address1 == -1:
         dprint("could not find Scale_patch_address1")
-    Scale_patch_address1 += 0x140000000
+    Scale_patch_address1 += mem_search_start_addr
     
     Scale_patch_address2 = memmory.find(b'\x0f\x11\x51\x70\x0f\x57\xd2\x0f\x14\xc8\x0f\x28\xc4\x0f\x14\xd1\x0f\x57\xc9\x0f\x11\x91\x80\x00\x00\x00\x41\x0f\x28\xd2\x0f\x14', 0)
     if Scale_patch_address2 == -1:
         dprint("could not find Scale_patch_address2")
-    Scale_patch_address2 += 0x140000000
+    Scale_patch_address2 += mem_search_start_addr
     
     code_injection_base_address = memmory.find(b'\x0f\x11\x41\x30\x0f\x10\x4a\x40\x0f\x11\x49\x40\x0f\x10\x42\x50\x0f\x11\x41\x50\x0f\x10\x4a\x60\x0f\x11\x49\x60\x0f\x10\x42\x70', 0)
     if code_injection_base_address == -1:
         dprint("could not find code_injection_base_address")
-    code_injection_base_address += 0x140000000
+    code_injection_base_address += mem_search_start_addr
     
     dprnt("Scale_patch_address1: "+hex(Scale_patch_address1)+" Scale_patch_address1: "+hex(Scale_patch_address2)+" Scale_patch_address2: "+hex(code_injection_base_address))
     
@@ -638,7 +639,7 @@ def initate_vorpx():
                 ctypes.windll.kernel32.UnmapViewOfFile(pmf)
                 
                 #call to make vorpx disable its own default stuff
-                #_vpxGetFloat(100)#get headset fov
+                _vpxGetFloat(100)#get headset fov
                 _vpxGetFloat3(103)
                 
                 #enable edge peek
@@ -699,7 +700,7 @@ def on_gfx_frame():
     
     if vorpx_loaded:
         try:
-            #fov = _vpxGetFloat(100)#always 96.01604461669922 on quest2
+            fov = _vpxGetFloat(100)#always 96.01604461669922 on quest2
             last_headset_rotation = headset_rotation
             headset_position_struct = _vpxGetFloat3(103)
             headset_rotation = _vpxGetFloat3(101)
@@ -888,13 +889,13 @@ def on_game_frame():
             dprnt("button change: "+str(last_btns_press))
         
         
-        if controller_state_left.StickX > 0.5 or controller_state_left.StickX < -0.5:
-            game_camera_scalew += controller_state_left.StickX*0.001
-            vrdll.set_scale(game_camera_scalew, game_camera_scale)
+        #if controller_state_left.StickX > 0.5 or controller_state_left.StickX < -0.5:
+        #    game_camera_scalew += controller_state_left.StickX*0.001
+        #    vrdll.set_scale(game_camera_scalew, game_camera_scale)
             
-        if controller_state_left.StickY > 0.5 or controller_state_left.StickY < -0.5:
-            game_camera_scale += controller_state_left.StickY*0.001
-            vrdll.set_scale(game_camera_scalew, game_camera_scale)
+        #if controller_state_left.StickY > 0.5 or controller_state_left.StickY < -0.5:
+        #    game_camera_scale += controller_state_left.StickY*0.001
+        #    vrdll.set_scale(game_camera_scalew, game_camera_scale)
             
         #When holding grap we move the cursor
         mouse_speed = 20
@@ -1005,8 +1006,10 @@ def vr_act(load_fresh=True,_connection=None):
         origin_rotate = origin_sims_camera_rot.y-rot
         vrdll.set_added_rotation(float(origin_rotate))
         extra_rotate = 0
-
-        origin_sims_camera_pos = get_cam_pos()#sims4.math.Vector3(camera._camera_position.x, camera._camera_position.y, camera._camera_position.z)
+        
+        #TODO: add correction, camera gets located inside the head of the character instead of where the headset is
+        #The camera should be moved about 10cm in the camera direction from the characters head
+        origin_sims_camera_pos = get_cam_pos()
         vrdll.set_origin(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
 
         if headset_position_uncorected != 0:
