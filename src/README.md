@@ -4,10 +4,8 @@ The mod is a python script mod that is loaded like any normal sims4 mod. Once th
 the sims4 camera position and rotation with the camera position and rotation that the DLL is getting from VorpX and the VR headset.
 
 ## Problems
-There are some issues with scaling and projection that causes the world to warp a bit when you tilt your head. Look at the python variable game_camera_scale
-and game_camera_scalew to fix. The exact values that remove the warping depends on your headsets field of view and the resolution of the game, vorpx image zoom and vorpx 3D-Strength.
+There are some issues with scaling and projection that causes the world to warp a bit when you tilt your head. If you have those types of issues set your games resolution to what the mod expects. Or Look at the python variables game_camera_scale and game_camera_scalew to fix the warping.
+The exact values of those variables that remove the warping depends on your headsets field of view and the resolution of the game, vorpx image zoom and vorpx 3D-Strength.
 
 ### Updates to the sims4
-When the sims exacutable is updated the mod needs to be updated to match the new exacutable. The python variable **code_injection_base_address**
-contains the address to the place where the game needs to be patched. I have used cheatengine in the past to locate the correct place in the executable.
-In the python function patch2_togle there is also 2 addresses that points to the executable that needs to be updated when the sims4 executable has been updated. The mod works without that patch but there is more warping than what is preferable.
+The mod makes in memmory patches to the sims 4 executable so when the sims exacutable is updated there is a chance the mod might break. When that happens the new patch locations need to be found and added to the mod. This is something that can be done with CheatEngine.
