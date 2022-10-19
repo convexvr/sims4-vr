@@ -294,27 +294,12 @@ def get_cam_pos():
 
 #Gets the camera rotation from game memmory
 def get_cam_rot():
-    global chosen_structs
-    for structpos in chosen_structs:
-        x_sidevec = ctypes.c_float.from_address(structpos+48)
-        y_sidevec = ctypes.c_float.from_address(structpos+52)
-        z_sidevec = ctypes.c_float.from_address(structpos+56)
-        
-        x_upvec = ctypes.c_float.from_address(structpos+64)
-        y_upvec = ctypes.c_float.from_address(structpos+68)
-        z_upvec = ctypes.c_float.from_address(structpos+72)
-        
-        x_fwdvec = ctypes.c_float.from_address(structpos+80)
-        y_fwdvec = ctypes.c_float.from_address(structpos+84)
-        z_fwdvec = ctypes.c_float.from_address(structpos+88)
-        mat = [[x_sidevec.value,y_sidevec.value,z_sidevec.value],
-            [x_upvec.value,y_upvec.value,z_upvec.value],
-            [x_fwdvec.value,y_fwdvec.value,z_fwdvec.value]
-        ]
-        return threedmath.tpy_rotmat_to_euler(mat)
-    dprnt("could not find a camera rotation, nr of chosen_structs = "+str(len(chosen_structs)))
-    return False
-
+    mat = [[vrdll.get_float_value(3),vrdll.get_float_value(4),vrdll.get_float_value(5)],
+        [vrdll.get_float_value(6),vrdll.get_float_value(7),vrdll.get_float_value(8)],
+        [vrdll.get_float_value(9),vrdll.get_float_value(10),vrdll.get_float_value(11)]
+    ]
+    return threedmath.tpy_rotmat_to_euler(mat)
+    
 #figures out what render struct address the mod should use
 @sims4.commands.Command('tsl', command_type=(sims4.commands.CommandType.Live))
 def tsl(_connection=None):
@@ -344,6 +329,10 @@ vrdll.set_origin.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float]
 vrdll.set_added_rotation.argtypes = [ctypes.c_float]
 vrdll.set_position_scale.argtypes = [ctypes.c_float]
 vrdll.set_struct_location.argtypes = [ctypes.c_ulonglong]
+vrdll.set_follow.argtypes = [ctypes.c_int]
+vrdll.get_float_value.argtypes = [ctypes.c_int]
+vrdll.get_float_value.restype  = ctypes.c_float
+
 
 vrdll.init()
 
@@ -428,7 +417,7 @@ if using_dll:
     call_patch()
 
 
-#Patches the game so that we are informed about where the render struct addresses are located in memmory
+#patch() is an old function that is no longer used, should be removed
 @sims4.commands.Command('patch', command_type=(sims4.commands.CommandType.Live))
 def patch(_connection=None):
     global sims_camera_address
@@ -448,38 +437,10 @@ def patch(_connection=None):
     #This is where we will tell the simms to store the pointer to its camera position struct
     adr = ctypes.addressof(sims_camera_address)
     if is_patched == False:
-        #first we generate the x86 code that will save the camera position struct pointer
-        sc = b'\x49\xb9'
-        sc += adr.to_bytes(8,'little')
-        sc += b'\x49\x89\x11\x90\x90\x90'
-        
-        
-        
-        
-        #then we separate it in to two parts
-        first_sc = int.from_bytes(sc[0:8],'big')
-        second_sc = int.from_bytes(sc[8:16],'big')
-        saved_first = first.value
-        saved_second = second.value
-        #then we check that everything is OK
-        if 0x404A100F3041110F != saved_first or 0x5042100F4049110F != saved_second:
-            dprnt("the TS4_x64.exe might have been updated it does not match how the exe usally looks ")
-            return 0
-         
-        #Patching done here
-        rwm = ReadWriteMemory()
-        process = rwm.get_process_by_id(pid)
-        process.get_all_access_handle()
-        org_code = process.readByte(code_injection_base_address, 16)#save and verify original code
-        
-        process.writeByte(code_injection_base_address, sc)#Write new code
-        
-        process.close()
-        
         patch_frame_counter = 0
         is_patched = True
 
-#removes the patch that informs us about where the render struct addresses are located in memmory
+#unpatch() is an old function that is no longer used, should be removed
 @sims4.commands.Command('unpatch', command_type=(sims4.commands.CommandType.Live))
 def unpatch(_connection=None):
     global is_patched
@@ -489,11 +450,11 @@ def unpatch(_connection=None):
     
     #I asume we are done lets reset patch 1
     if is_patched:
-        rwm = ReadWriteMemory()
-        process = rwm.get_process_by_id(pid)
-        process.get_all_access_handle()
-        process.writeByte(code_injection_base_address, org_code)#Write new code
-        process.close()
+        #rwm = ReadWriteMemory()
+        #process = rwm.get_process_by_id(pid)
+        #process.get_all_access_handle()
+        #process.writeByte(code_injection_base_address, org_code)#Write new code
+        #process.close()
         is_patched = False
 
 
@@ -742,6 +703,8 @@ def set_fireid(uf):
     global FireID
     FireID = uf
 tab_active = False
+
+follow_active = 0
 #When the game informs us that it has executed a game frame
 def on_game_frame():
     global patch_frame_counter
@@ -755,6 +718,7 @@ def on_game_frame():
     global hold_b_button_frame_counter
     global last_btns_press
     global holding_grab
+    global follow_active
     global holding_trig
     global before_sync_cam_location
     global origin_sims_camera_pos
@@ -835,10 +799,23 @@ def on_game_frame():
                     #if last_btns_press == 1:#A was pressed short, click mouse
                     #    pyautogui.click()
                     if last_btns_press == 1:#A was pressed short, reset position
-                        if origin_sims_camera_pos != 0:
-                            cam_syncing = True
-                            before_sync_cam_location = get_cam_pos()
-                            vr_act()#disable vr and locate real cam
+                        if follow_active == 0:
+                            follow_active = 1
+                        else:
+                            follow_active = 0
+                            x = vrdll.get_float_value(0)
+                            y = vrdll.get_float_value(1)
+                            z = vrdll.get_float_value(2)
+                            
+                            origin_sims_camera_pos = sims4.math.Vector3(x, y, z)
+                            vrdll.set_origin(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
+
+                            if headset_position_uncorected != 0:
+                                headset_offset.x = headset_position_uncorected.x
+                                headset_offset.y = headset_position_uncorected.y
+                                headset_offset.z = headset_position_uncorected.z
+                                vrdll.set_offset(headset_offset.x, headset_offset.y, headset_offset.z)
+                        vrdll.set_follow(follow_active)
                     
                     if last_btns_press == 2:#B was pressed short, initate vr (should also  press tab+shit to enter fps mode)
                         dprnt("#B was pressed short, start vr")

@@ -54,6 +54,8 @@ UINT64 structpos2 = 4545;
 
 int vr_active = 0;
 
+int follow_active = 0;
+
 float height_scale = 4545;
 float width_scale = 4545;
 
@@ -72,10 +74,71 @@ float last_x = 0;
 float last_y = 0;
 float last_z = 0;
 
+
+
+float games_x_sidevec = 0;
+float games_y_sidevec = 0;
+float games_z_sidevec = 0;
+	
+float games_x_upvec = 0;
+float games_y_upvec = 0;
+float games_z_upvec = 0;
+	
+float games_x_fwvec = 0;
+float games_y_fwvec = 0;
+float games_z_fwvec = 0;
+
+
 float games_x = 0;
 float games_y = 0;
 float games_z = 0;
 
+
+__declspec(dllexport) float get_float_value(int val_id){
+	if(val_id == 0){
+		return games_x;
+	}
+	if(val_id == 1){
+		return games_y;
+	}
+	if(val_id == 2){
+		return games_z;
+	}
+	if(val_id == 3){
+		return games_x_sidevec;
+	}
+	if(val_id == 4){
+		return games_y_sidevec;
+	}
+	if(val_id == 5){
+		return games_z_sidevec;
+	}
+	if(val_id == 6){
+		return games_x_upvec;
+	}
+	if(val_id == 7){
+		return games_y_upvec;
+	}
+	if(val_id == 8){
+		return games_z_upvec;
+	}
+	if(val_id == 9){
+		return games_x_fwvec;
+	}
+	if(val_id == 10){
+		return games_y_fwvec;
+	}
+	if(val_id == 11){
+		return games_z_fwvec;
+	}
+	
+	return 0;
+}
+
+__declspec(dllexport) int set_follow(int follow){
+	follow_active = follow;
+	return follow_active;
+}
 
 __declspec(dllexport) int set_offset(float x, float y, float z){
 	offset_x = x;
@@ -289,35 +352,50 @@ int apply_mat(UINT64 structp, float x, float y, float z, float3x3 mat){
 	y_fwvec = (float*)structp+(84/4);
 	z_fwvec = (float*)structp+(88/4);
 	
-	//if the cordinates have changed and we have not alterd them, we are looking at the games desired camera position
-	if(*x_pos != last_x || *y_pos != last_y  || *z_pos != last_z ){
-		games_x = *x_pos;
-		games_y = *y_pos;
-		games_z = *z_pos;
+	games_x = *x_pos;
+	games_y = *y_pos;
+	games_z = *z_pos;
+		
+	games_x_sidevec = *x_sidevec;
+	games_y_sidevec = *y_sidevec;
+	games_z_sidevec = *z_sidevec;
+	
+	games_x_upvec = *x_upvec;
+	games_y_upvec = *y_upvec;
+	games_z_upvec = *z_upvec;
+	
+	games_x_fwvec = *x_fwvec;
+	games_y_fwvec = *y_fwvec;
+	games_z_fwvec = *z_fwvec;
+	
+	
+	if(vr_active == 1){
+		
+		if(follow_active == 0){
+			*x_pos = x;
+			*y_pos = y;
+			*z_pos = z;
+		}
+		
+		last_x = x;
+		last_y = y;
+		last_z = y;
+		
+		*height_scalep = height_scale;
+		*width_scalep = width_scale;
+		
+		*x_sidevec = mat.a;
+		*y_sidevec = mat.b;
+		*z_sidevec = mat.c;
+		
+		*x_upvec = mat.d;
+		*y_upvec = mat.e;
+		*z_upvec = mat.f;
+		
+		*x_fwvec = mat.g;
+		*y_fwvec = mat.h;
+		*z_fwvec = mat.i;
 	}
-	
-	*x_pos = x;
-	*y_pos = y;
-	*z_pos = z;
-	
-	last_x = x;
-	last_y = y;
-	last_z = y;
-	
-	*height_scalep = height_scale;
-	*width_scalep = width_scale;
-	
-	*x_sidevec = mat.a;
-	*y_sidevec = mat.b;
-	*z_sidevec = mat.c;
-	
-	*x_upvec = mat.d;
-	*y_upvec = mat.e;
-	*z_upvec = mat.f;
-	
-	*x_fwvec = mat.g;
-	*y_fwvec = mat.h;
-	*z_fwvec = mat.i;
 }
 
 __declspec(dllexport) int update()
@@ -360,41 +438,12 @@ __declspec(dllexport) int update()
 	
 
 	
-	if(vr_active == 1){
-		apply_mat(structpos, new_cam_x, new_cam_y, new_cam_z, mat);
-		if(structpos2 != 4545){
-			apply_mat(structpos2, new_cam_x, new_cam_y, new_cam_z, mat);
-		}
+	
+	apply_mat(structpos, new_cam_x, new_cam_y, new_cam_z, mat);
+	if(structpos2 != 4545){
+		apply_mat(structpos2, new_cam_x, new_cam_y, new_cam_z, mat);
 	}
 	
-	/*
-	 x_sidevec = ctypes.c_float.from_address(structpos+48)
-    y_sidevec = ctypes.c_float.from_address(structpos+52)
-    z_sidevec = ctypes.c_float.from_address(structpos+56)
-    
-    zero_1 = ctypes.c_float.from_address(structpos+60)
-    
-    x_upvec = ctypes.c_float.from_address(structpos+64)
-    y_upvec = ctypes.c_float.from_address(structpos+68)
-    z_upvec = ctypes.c_float.from_address(structpos+72)
-    
-    zero_2 = ctypes.c_float.from_address(structpos+76)
-    
-    x_fwdvec = ctypes.c_float.from_address(structpos+80)
-    y_fwdvec = ctypes.c_float.from_address(structpos+84)
-    z_fwdvec = ctypes.c_float.from_address(structpos+88)
-    
-    zero_3 = ctypes.c_float.from_address(structpos+92)
-    
-    x_pos = ctypes.c_float.from_address(structpos+96)
-    y_pos = ctypes.c_float.from_address(structpos+100)
-    z_pos = ctypes.c_float.from_address(structpos+104)
-    
-    
-    width_scale = ctypes.c_float.from_address(structpos+0x70)
-    height_scale = ctypes.c_float.from_address(structpos+0x84)
-	*/
-
 	fp = fopen("C:\\s4\\debug_c.txt", "a");
 	
 		

@@ -1,10 +1,12 @@
 EXPORTS
-    init @1
-    set_added_rotation @2
-    set_offset @3
-    set_origin @4
-    set_position_scale @5
-    set_scale @6
-    set_struct_location @7
-    set_vr_active @8
-    update @9
+    get_float_value @1
+    init @2
+    set_added_rotation @3
+    set_follow @4
+    set_offset @5
+    set_origin @6
+    set_position_scale @7
+    set_scale @8
+    set_struct_location @9
+    set_vr_active @10
+    update @11
