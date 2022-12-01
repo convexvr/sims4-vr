@@ -315,14 +315,21 @@ def tsl(_connection=None):
         z_pos = ctypes.c_float.from_address(structpos+104)
 
         if (not math.isnan(x_pos.value)) and round(x_pos.value,2) == round(camera._camera_position.x,2) and round(y_pos.value,2) == round(camera._camera_position.y,2) and round(z_pos.value,2) == round(camera._camera_position.z,2):
-            if first:
-                chosen_structs.append(structpos)
-                sims_camera_address_compare.value = structpos
-                first = False
-            vrdll.set_struct_location(structpos)#The last struct seams to be the one acctually controlling the camera
-            dprnt("chosen struct: "+ hex(structpos)+ "pos: "+str(x_pos.value)+", "+str(y_pos.value)+", "+str(z_pos.value))
+            #if first:
+            #    
+            #    sims_camera_address_compare.value = structpos
+            #    first = False
 
-vrdll = ctypes.CDLL(ModFolder+"\\s4vrlib.dll")
+            #TODO there is a bug here as we allow multiple structs
+            sims_camera_address_compare.value = structpos
+            chosen_structs.append(structpos)
+            vrdll.set_struct_location(structpos)#The last struct seams to be the one acctually controlling the camera
+            
+            dprnt("chosen struct: "+ hex(structpos)+ " pos: "+str(x_pos.value)+", "+str(y_pos.value)+", "+str(z_pos.value))
+
+    vr_act()#NOV-30-2022 This should not be here just for temp testing
+
+vrdll = ctypes.CDLL("C:\\Users\\me\\Documents\\projects\\vrdll\\vrdll\\x64\\Debug\\vrdll.dll")
 vrdll.set_scale.argtypes = [ctypes.c_float, ctypes.c_float]
 vrdll.set_offset.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float]
 vrdll.set_origin.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float]
@@ -616,7 +623,7 @@ def initate_vorpx():
     except Exception as e:
         dprnt("Exception: "+ str(e))
 
-initate_vorpx()
+#initate_vorpx()
 
 vr_active = False
 vr_pos = 1
@@ -652,12 +659,20 @@ def on_gfx_frame():
     
     second = datetime.datetime.now().strftime("%S")
     if second != last_second:
-        dprnt("fps: "+str(ticks_p_s))
+        #dprnt("cam: "+str(camera._camera_position.x)+", "+str(camera._camera_position.y)+", "+str(camera._camera_position.z))
+        #dprnt("fps: "+str(ticks_p_s))
         ticks_p_s = 0
         last_second = second
     
     ticks_p_s += 1
     
+    if True:
+        headset_position_struct = sims4.math.Vector3(vrdll.get_float_value(15), vrdll.get_float_value(16), vrdll.get_float_value(17))
+
+        ##30-nov-2022 This need to be fixed should be yaw corrected
+        headset_position = headset_position_struct
+        #_vpxGetFloat3(103)
+        headset_rotation = sims4.math.Vector3(vrdll.get_float_value(12), vrdll.get_float_value(13), vrdll.get_float_value(14))
     
     if vorpx_loaded:
         try:
@@ -665,7 +680,8 @@ def on_gfx_frame():
             last_headset_rotation = headset_rotation
             headset_position_struct = _vpxGetFloat3(103)
             headset_rotation = _vpxGetFloat3(101)
-            headset_quat = _vpxGetFloat4(102)
+            #headset_quat = _vpxGetFloat4(102)
+            headset_position = _vpxYawCorrection(headset_position_struct, float(origin_rotate+extra_rotate))
             
         except Exception as e:
             dprnt("failed using _vpxGetControllerState: "+str(e))
@@ -682,7 +698,7 @@ def on_gfx_frame():
         headset_position_struct.y -= headset_offset.y
         headset_position_struct.z -= headset_offset.z
         
-        headset_position = _vpxYawCorrection(headset_position_struct, float(origin_rotate+extra_rotate))
+        
         
 #Togles "sims4 First person camera mode"
 def togle_fps_mode():
@@ -757,11 +773,11 @@ def on_game_frame():
             known_sruct_locations.append(sims_camera_address.value)
     
     if vorpx_loaded:
-        controller_state = _vpxGetControllerState(1)#get right controler state
-        controller_state_left = _vpxGetControllerState(0)#get left controler state
+        #controller_state = _vpxGetControllerState(1)#get right controler state
+        #controller_state_left = _vpxGetControllerState(0)#get left controler state
         
-        controler_rotation = _vpxGetFloat3(203)
-        controler_pos = _vpxGetFloat3(205)##if we want to create shoot to location
+        #controler_rotation = _vpxGetFloat3(203)
+        #controler_pos = _vpxGetFloat3(205)##if we want to create shoot to location
 
         controler_pos.x -= headset_offset.x
         controler_pos.y -= headset_offset.y
@@ -911,7 +927,7 @@ def on_game_frame():
                     headset_offset.z = headset_position_uncorected.z
                     vrdll.set_offset(headset_offset.x, headset_offset.y, headset_offset.z)
 
-
+tickers = 0
 @injector.inject_to(Zone, 'update')
 def vr_zone_update(original, self, absolute_ticks):
     global vr_active
@@ -937,7 +953,9 @@ def vr_zone_update(original, self, absolute_ticks):
     global target_compensation
     global known_sruct_locations
     global sims_camera_address
+    global tickers
     original(self, absolute_ticks)
+
     on_game_frame()
     
     on_gfx_frame()
@@ -957,7 +975,7 @@ def vr_act(load_fresh=True,_connection=None):
     global extra_rotate
     global origin_rotate
     if vr_active:
-        _vpxSetInt(400, 1)#Enable Edge peek
+        #_vpxSetInt(400, 1)#Enable Edge peek
         new_cam_pos = sims4.math.Vector3(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
         new_cam_pos.x += (headset_position.x)*scale
         new_cam_pos.y += (headset_position.y)*scale#up/down
@@ -970,16 +988,18 @@ def vr_act(load_fresh=True,_connection=None):
         camera.focus_on_object_from_position(target, origin_sims_camera_pos)
         camera._camera_position = origin_sims_camera_pos
     else:
-        _vpxSetInt(400, 0)#Disable Edge peek
+        #_vpxSetInt(400, 0)#Disable Edge peek
+
+        origin_sims_camera_rot = get_cam_rot()
         vr_active = True
-        vrdll.set_vr_active(1)
+        
         orgiginal_target = camera._target_position
         if headset_rotation == 0:
             rot = 0
         else:
             rot = headset_rotation.y
-        origin_sims_camera_rot = get_cam_rot()
         
+        vrdll.set_vr_active(1)
         origin_rotate = origin_sims_camera_rot.y-rot
         vrdll.set_added_rotation(float(origin_rotate))
         extra_rotate = 0
