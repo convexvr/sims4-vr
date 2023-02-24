@@ -26,8 +26,9 @@ Refresh rate: 75
 
 ## Usage
 1. Install mod
-2. Start Sims4 
-3. When playing press the B-button on your oculus controller once quickly to initate VR mode
+2. Connect VR headset to PC.
+3. Start Sims4 
+4. When playing press the B-button on your oculus controller once quickly to initate VR mode
 
 ## Controls
 ### Right hand oculus controller
