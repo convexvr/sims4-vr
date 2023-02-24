@@ -14,6 +14,8 @@
 
 
 import camera, services, sims4.commands, os
+
+from server_commands import interaction_commands
 import sims4.reload as r
 import helpers.injector as injector
 import ctypes
@@ -153,7 +155,7 @@ def find_pach_locations():
         dprint("could not find code_injection_base_address")
     code_injection_base_address += mem_search_start_addr
     
-    dprnt("Scale_patch_address1: "+hex(Scale_patch_address1)+" Scale_patch_address1: "+hex(Scale_patch_address2)+" Scale_patch_address2: "+hex(code_injection_base_address))
+    dprnt("Scale_patch_address1: "+hex(Scale_patch_address1)+" Scale_patch_address2: "+hex(Scale_patch_address2)+" code_injection_base_address: "+hex(code_injection_base_address))
     
     
 
@@ -308,6 +310,7 @@ def tsl(_connection=None):
     
     dprnt("Selecting chosen_structs, nr of known_sruct_locations = "+str(len(chosen_structs)))
     chosen_structs = []
+    chosen_structs2 = []
     first = True
     for structpos in known_sruct_locations:
         x_pos = ctypes.c_float.from_address(structpos+96)
@@ -321,13 +324,24 @@ def tsl(_connection=None):
             #    first = False
 
             #TODO there is a bug here as we allow multiple structs
-            sims_camera_address_compare.value = structpos
-            chosen_structs.append(structpos)
-            vrdll.set_struct_location(structpos)#The last struct seams to be the one acctually controlling the camera
+            dprnt("posible struct: "+ hex(structpos))
+            chosen_structs2.append(structpos)
             
-            dprnt("chosen struct: "+ hex(structpos)+ " pos: "+str(x_pos.value)+", "+str(y_pos.value)+", "+str(z_pos.value))
+            
+    if len(chosen_structs2) < 1:
+        dprnt("Could not find any matching structs");
+        return(0)
 
-    vr_act()#NOV-30-2022 This should not be here just for temp testing
+    if len(chosen_structs2) > 1:
+        dprnt("To many matching structs, picking the last one");
+    
+    structpos = chosen_structs2.pop()
+    chosen_structs.append(structpos)
+    sims_camera_address_compare.value = structpos
+    vrdll.set_struct_location(structpos)#The last struct seams to be the one acctually controlling the camera
+    dprnt("chosen struct: "+ hex(structpos)+ " pos: "+str(x_pos.value)+", "+str(y_pos.value)+", "+str(z_pos.value))
+
+    #vr_act()#NOV-30-2022 This should not be here just for temp testing
 
 vrdll = ctypes.CDLL("C:\\Users\\me\\Documents\\projects\\vrdll\\vrdll\\x64\\Debug\\vrdll.dll")
 vrdll.set_scale.argtypes = [ctypes.c_float, ctypes.c_float]
@@ -336,6 +350,8 @@ vrdll.set_origin.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float]
 vrdll.set_added_rotation.argtypes = [ctypes.c_float]
 vrdll.set_position_scale.argtypes = [ctypes.c_float]
 vrdll.set_struct_location.argtypes = [ctypes.c_ulonglong]
+vrdll.get_button_value.argtypes = [ctypes.c_int]
+vrdll.get_button_value.restype = ctypes.c_ulonglong
 vrdll.set_follow.argtypes = [ctypes.c_int]
 vrdll.get_float_value.argtypes = [ctypes.c_int]
 vrdll.get_float_value.restype  = ctypes.c_float
@@ -446,6 +462,7 @@ def patch(_connection=None):
     if is_patched == False:
         patch_frame_counter = 0
         is_patched = True
+        tsl()
 
 #unpatch() is an old function that is no longer used, should be removed
 @sims4.commands.Command('unpatch', command_type=(sims4.commands.CommandType.Live))
@@ -486,8 +503,10 @@ def patch2_togle(_connection=None):
     patches = [
         b'\x90\x90\x90\x90\x90\x90\x90',
         b'\x90\x90\x90\x90'
+    #    b'\x90'*187
     ]
     
+
     
     
     
@@ -510,120 +529,6 @@ def patch2_togle(_connection=None):
         
     process.close()
 
-
-#sets up python connection to vorpx.
-def initate_vorpx():
-    global vorpx_loaded
-    global _vpxInit
-    global _vpxFree
-    global _vpxIsActive
-    global _vpxGetFloat
-    global _vpxGetFloat3
-    global _vpxSetFloat3
-    global _vpxSetInt
-    global _vpxGetFloat4
-    global _vpxGetControllerState
-    global _vpxYawCorrection
-    global _vpxGetFuncAddress
-    global vpxGetHeadsetRotationEuler
-    global vpxGetHeadsetPosition
-    global vpx_active
-    global pid
-    
-    map_file = "Local\\vpxapi_gpa"+str(pid)
-    
-    
-    try:
-        fn = ctypes.c_char_p(map_file.encode('utf-8'))
-        FILE_MAP_READ = ctypes.wintypes.DWORD(4)
-        hmf = ctypes.windll.kernel32.OpenFileMappingA(FILE_MAP_READ, ctypes.wintypes.BOOL(False), fn)
-         
-        if hmf:
-            pmf = ctypes.windll.kernel32.MapViewOfFile(hmf, FILE_MAP_READ, 0, 0, 8)
-            if pmf:
-                pmf_val = ctypes.c_ulonglong.from_address(pmf).value
-
-                #create _vpxGetFuncAddress function
-                adr_functype = ctypes.CFUNCTYPE(ctypes.c_ulonglong, ctypes.c_ulong, ctypes.c_char_p)
-                _vpxGetFuncAddress = adr_functype(pmf_val)
-                
-                #create _vpxInit function
-                init_free_functype = ctypes.CFUNCTYPE(ctypes.c_ulong)
-                _vpxInit_adr = _vpxGetFuncAddress(ctypes.c_ulong(pid), ctypes.c_char_p("VorpApiInit".encode('utf-8')))
-                _vpxInit = init_free_functype(_vpxInit_adr)
-                
-                #run vpx init
-                vpx_active = _vpxInit()#Craches if headset is connected but works otherwise returns a 0 which means OK
-                
-                #create _vpxFree function # we never use this since we dont track when the game has turned of
-                _vpxFree_adr = _vpxGetFuncAddress(ctypes.c_ulong(pid), ctypes.c_char_p("VorpApiFree".encode('utf-8')))
-                _vpxFree = init_free_functype(_vpxFree_adr)
-                
-                #create _vpxIsActive function # 
-                _vpxIsActive_adr = _vpxGetFuncAddress(ctypes.c_ulong(pid), ctypes.c_char_p("VorpApiIsActive".encode('utf-8')))
-                _vpxIsActive = init_free_functype(_vpxIsActive_adr)
-                
-                
-                
-                #create _vpxGetFloat3 function 
-                float_functype = ctypes.CFUNCTYPE(ctypes.c_float, ctypes.c_ulong)# takes a uint returns a pointer to a struct with a float
-                _vpxGetFloat_adr = _vpxGetFuncAddress(ctypes.c_ulong(pid), ctypes.c_char_p("VorpApiGetFloat".encode('utf-8')))
-                _vpxGetFloat = float_functype(_vpxGetFloat_adr)
-                
-                #create _vpxGetFloat3 function 
-                float3_functype = ctypes.CFUNCTYPE(VPXFLOAT3, ctypes.c_ulong)# takes a uint returns a pointer to a struct with 3 floats
-                _vpxGetFloat3_adr = _vpxGetFuncAddress(ctypes.c_ulong(pid), ctypes.c_char_p("VorpApiGetFloat3".encode('utf-8')))
-                _vpxGetFloat3 = float3_functype(_vpxGetFloat3_adr)
-                
-                #create _vpxGetFloat4 function 
-                float4_functype = ctypes.CFUNCTYPE(VPXFLOAT4, ctypes.c_ulong)# takes a uint returns a pointer to a struct with 4 floats
-                _vpxGetFloat4_adr = _vpxGetFuncAddress(ctypes.c_ulong(pid), ctypes.c_char_p("VorpApiGetFloat4".encode('utf-8')))
-                _vpxGetFloat4 = float4_functype(_vpxGetFloat4_adr)
-                
-                #create _vpxYawCorrection function 
-                vpxYawCorrection_functype = ctypes.CFUNCTYPE(VPXFLOAT3, VPXFLOAT3, ctypes.c_float)
-                _vpxYawCorrection_adr = _vpxGetFuncAddress(ctypes.c_ulong(pid), ctypes.c_char_p("VorpApiYawCorrection".encode('utf-8')))
-                _vpxYawCorrection = vpxYawCorrection_functype(_vpxYawCorrection_adr)
-                
-                #create _vpxSetFloat3 function 
-                vpxSetFloat3_functype = ctypes.CFUNCTYPE(None, ctypes.c_ulong, VPXFLOAT3)
-                _vpxSetFloat3_adr = _vpxGetFuncAddress(ctypes.c_ulong(pid), ctypes.c_char_p("VorpApiSetFloat3".encode('utf-8')))
-                _vpxSetFloat3 = vpxSetFloat3_functype(_vpxSetFloat3_adr)
-                
-                #create _vpxSetInt function 
-                vpxSetInt_functype = ctypes.CFUNCTYPE(ctypes.c_ulong, ctypes.c_ulong)
-                _vpxSetInt_adr = _vpxGetFuncAddress(ctypes.c_ulong(pid), ctypes.c_char_p("VorpApiSetInt".encode('utf-8')))
-                _vpxSetInt = vpxSetInt_functype(_vpxSetInt_adr)
-                
-                
-                
-                #create _vpxGetControllerState function 
-                vpxGetControllerState_functype = ctypes.CFUNCTYPE(VPX_CONTROLLER_STATE, ctypes.c_ulong)
-                _vpxGetControllerState_adr = _vpxGetFuncAddress(ctypes.c_ulong(pid), ctypes.c_char_p("VorpApiGetControllerState".encode('utf-8')))
-                _vpxGetControllerState = vpxGetControllerState_functype(_vpxGetControllerState_adr)
-                
-                vorpx_loaded = True
-                #func
-                ctypes.windll.kernel32.UnmapViewOfFile(pmf)
-                
-                #call to make vorpx disable its own default stuff
-                _vpxGetFloat(100)#get headset fov
-                _vpxGetFloat3(103)
-                
-                #enable edge peek
-                _vpxSetInt(400, 1)
-                
-                _vpxSetInt(206, 1)#Force Controller rendering
-            
-            else:
-                dprnt("failed to open pmf: "+str(pfm))
-            ctypes.windll.kernel32.CloseHandle(hmf)
-        else:
-            dprnt("failed to open hmf: "+str(hmf))
-    except Exception as e:
-        dprnt("Exception: "+ str(e))
-
-#initate_vorpx()
 
 vr_active = False
 vr_pos = 1
@@ -668,7 +573,7 @@ def on_gfx_frame():
     
     if True:
         headset_position_struct = sims4.math.Vector3(vrdll.get_float_value(15), vrdll.get_float_value(16), vrdll.get_float_value(17))
-
+        headset_position_uncorected = sims4.math.Vector3(headset_position_struct.x, headset_position_struct.y, headset_position_struct.z)
         ##30-nov-2022 This need to be fixed should be yaw corrected
         headset_position = headset_position_struct
         #_vpxGetFloat3(103)
@@ -692,7 +597,7 @@ def on_gfx_frame():
         #We should read in game_desired_cam_pos here it is avalible in memmory at this point 2022-01 Nahhh not any longer 2022-04 that would need to be done in the vrdll
         
         #save for use when reseting position
-        headset_position_uncorected = sims4.math.Vector3(headset_position_struct.x, headset_position_struct.y, headset_position_struct.z)
+        
         
         headset_position_struct.x -= headset_offset.x
         headset_position_struct.y -= headset_offset.y
@@ -719,6 +624,9 @@ def set_fireid(uf):
     global FireID
     FireID = uf
 tab_active = False
+
+class Object(object):
+    pass
 
 follow_active = 0
 #When the game informs us that it has executed a game frame
@@ -764,7 +672,6 @@ def on_game_frame():
     #We wait for 300 frames untill we evaluate the data, unpatch, and apply patch2
     if patch_frame_counter == 20 and is_patched:
         unpatch()
-        tsl()
         vr_tog = True
     
     if sims_camera_address.value != 4545:
@@ -772,6 +679,33 @@ def on_game_frame():
             dprnt("Added new known_sruct_locations: "+str(sims_camera_address.value))
             known_sruct_locations.append(sims_camera_address.value)
     
+    
+    controller_state = Object()
+    controller_state.ButtonsPressed = vrdll.get_button_value(0)
+    controller_state.StickX = vrdll.get_float_value(18)*2
+    controller_state.StickY = vrdll.get_float_value(19)*2
+    controller_state.Trigger = 0
+    controller_state.Grip = 0
+    controler_rotation = sims4.math.Vector3(0, 0, 0)
+
+    dprnt("btnpres: "+str(controller_state.ButtonsPressed))
+
+    if headset_rotation != 0:
+        controler_rotation = sims4.math.Vector3(headset_rotation.x, headset_rotation.y, headset_rotation.z)#TODO jan 29 hack to make movments work with camera
+
+    if controller_state.ButtonsPressed == 128:
+        controller_state.ButtonsPressed = 1
+    elif controller_state.ButtonsPressed == 2:
+        controller_state.ButtonsPressed = 2
+    elif controller_state.ButtonsPressed == 17179869188:
+        controller_state.ButtonsPressed = 0
+        controller_state.Grip = 1
+    elif controller_state.ButtonsPressed == 8589934592:#
+        controller_state.Trigger = 1
+    elif controller_state.ButtonsPressed == 25769803780:
+        controller_state.Trigger = 1
+        controller_state.Grip = 1
+
     if vorpx_loaded:
         #controller_state = _vpxGetControllerState(1)#get right controler state
         #controller_state_left = _vpxGetControllerState(0)#get left controler state
@@ -799,133 +733,134 @@ def on_game_frame():
                 FireLocat[0].translation = sims4.math.Vector3(new_cont_x, new_cont_y, new_cont_z)
                 firealarm.set_location(FireLocat)
         
-        if controller_state.ButtonsPressed != 0:
-            hold_b_button_frame_counter += 1
-            if hold_b_button_frame_counter == 20:
-                dprnt("button hold down for long: "+str(last_btns_press))
-                #if last_btns_press == 2:#B was pressed long, 
-                #    pyautogui.press('somebutton')
+    if controller_state.ButtonsPressed != 0:
+        hold_b_button_frame_counter += 1
+        if hold_b_button_frame_counter == 20:
+            dprnt("button hold down for long: "+str(last_btns_press))
+            #if last_btns_press == 2:#B was pressed long, 
+            #    pyautogui.press('somebutton')
                 
-                if last_btns_press == 1:#A was pressed long, tell sims4 to toogle GUI (press tab)
-                    pyautogui.press('tab')
-        else:
-            if last_btns_press != controller_state.ButtonsPressed:
-                if hold_b_button_frame_counter < 20:
-                    dprnt("button was clicked quickly: "+str(last_btns_press))
-                    #if last_btns_press == 1:#A was pressed short, click mouse
-                    #    pyautogui.click()
-                    if last_btns_press == 1:#A was pressed short, reset position
-                        if follow_active == 0:
-                            follow_active = 1
-                        else:
-                            follow_active = 0
-                            x = vrdll.get_float_value(0)
-                            y = vrdll.get_float_value(1)
-                            z = vrdll.get_float_value(2)
-                            
-                            origin_sims_camera_pos = sims4.math.Vector3(x, y, z)
-                            vrdll.set_origin(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
-
-                            if headset_position_uncorected != 0:
-                                headset_offset.x = headset_position_uncorected.x
-                                headset_offset.y = headset_position_uncorected.y
-                                headset_offset.z = headset_position_uncorected.z
-                                vrdll.set_offset(headset_offset.x, headset_offset.y, headset_offset.z)
-                        vrdll.set_follow(follow_active)
-                    
-                    if last_btns_press == 2:#B was pressed short, initate vr (should also  press tab+shit to enter fps mode)
-                        dprnt("#B was pressed short, start vr")
-                        vr_tog = True
-        
-        if vr_tog:
-            if len(chosen_structs) > 0:
-                if vr_active:
-                    if is_in_fps_mode():
-                        togle_fps_mode()
-                    vr_act()
-                else:
-                    if not is_in_fps_mode():
-                        cam_syncing = True
-                        before_sync_cam_location = get_cam_pos()
-                        #vr_act()
-                        togle_fps_mode()
-                    else:
-                        vr_act()
-            else:
-                patch()
-        
-        old_holding_trig = holding_trig
-        if controller_state.Trigger == 0:
-            holding_trig = False
-        else:
-            holding_trig = True
-        
-        if holding_trig != old_holding_trig:
-            if holding_trig:
-                pyautogui.click()#press mouse on trigger
-        
-        old_holding_grab = holding_grab
-        if controller_state.Grip == 0:
-            holding_grab = False
-        else:
-            holding_grab = True
-        
-        if holding_grab != old_holding_grab and vr_active:
-            if holding_grab:
-                _vpxSetInt(400, 1)#Enable Edge peek
-            else:
-                _vpxSetInt(400, 0)#Disable Edge peek
-        
+            if last_btns_press == 1:#A was pressed long, tell sims4 to toogle GUI (press tab)
+                pyautogui.press('tab')
+    else:
         if last_btns_press != controller_state.ButtonsPressed:
-            hold_b_button_frame_counter = 0
-            last_btns_press = controller_state.ButtonsPressed
-            dprnt("button change: "+str(last_btns_press))
+            if hold_b_button_frame_counter < 20:
+                dprnt("button was clicked quickly: "+str(last_btns_press))
+                #if last_btns_press == 1:#A was pressed short, click mouse
+                #    pyautogui.click()
+                if last_btns_press == 1:#A was pressed short, reset position
+                    if follow_active == 0:
+                        follow_active = 1
+                    else:
+                        follow_active = 0
+                        x = vrdll.get_float_value(0)
+                        y = vrdll.get_float_value(1)
+                        z = vrdll.get_float_value(2)
+                            
+                        origin_sims_camera_pos = sims4.math.Vector3(x, y, z)
+                        vrdll.set_origin(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
+
+                        if headset_position_uncorected != 0:
+                            headset_offset.x = headset_position_uncorected.x
+                            headset_offset.y = headset_position_uncorected.y
+                            headset_offset.z = headset_position_uncorected.z
+                            vrdll.set_offset(0, headset_offset.y, 0)
+                    vrdll.set_follow(follow_active)
+                    
+                if last_btns_press == 2:#B was pressed short, initate vr (should also  press tab+shit to enter fps mode)
+                    dprnt("#B was pressed short, start vr")
+                    vr_tog = True
         
-        
-        #if controller_state_left.StickX > 0.5 or controller_state_left.StickX < -0.5:
-        #    game_camera_scalew += controller_state_left.StickX*0.001
-        #    vrdll.set_scale(game_camera_scalew, game_camera_scale)
-            
-        #if controller_state_left.StickY > 0.5 or controller_state_left.StickY < -0.5:
-        #    game_camera_scale += controller_state_left.StickY*0.001
-        #    vrdll.set_scale(game_camera_scalew, game_camera_scale)
-            
-        #When holding grap we move the cursor
-        mouse_speed = 20
-        if holding_grab:
-            pyautogui.moveRel(controller_state.StickX*mouse_speed, -controller_state.StickY*mouse_speed)
-        else:
-            #should move in the 3D direction of the controller but we will start with just camera direction first on the plane
-            if controller_state.StickY != 0.0:
-                if origin_sims_camera_pos != 0:
-                    cos_len = math.cos(math.radians(controler_rotation.x))
-                    origin_sims_camera_pos.x += math.sin(math.radians(controler_rotation.y+origin_rotate))*cos_len*0.05*controller_state.StickY
-                    origin_sims_camera_pos.z += -math.cos(math.radians(controler_rotation.y+origin_rotate))*cos_len*0.05*controller_state.StickY
-                    origin_sims_camera_pos.y -= math.sin(math.radians(controler_rotation.x))*0.05*controller_state.StickY
-                    dprnt("controler rot: x: "+str(controler_rotation.x)+" y: "+str(controler_rotation.y))
-                    vrdll.set_origin(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
-            
-            if controller_state.StickX > 0.5 or controller_state.StickX < -0.5:
-                
-                #To rotate we need to create a new reference frame
-                if headset_rotation == 0:
-                    rot = 0
+    if vr_tog:
+        if len(chosen_structs) > 0:
+            if vr_active:
+                if is_in_fps_mode():
+                    togle_fps_mode()
+                vr_act()
+            else:
+                if not is_in_fps_mode():
+                    #cam_syncing = True
+                    #before_sync_cam_location = get_cam_pos()
+                    vr_act()
+                    togle_fps_mode()
                 else:
-                    rot = headset_rotation.y
-                origin_sims_camera_rot = get_cam_rot()
-                origin_rotate = origin_rotate+controller_state.StickX
-                vrdll.set_added_rotation(float(origin_rotate))
-                new_cam_pos = sims4.math.Vector3(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
-                new_cam_pos.x += (headset_position.x)*scale#*math.sin(math.radians(extra_rotate))
-                new_cam_pos.y += (headset_position.y)*scale#up/down
-                new_cam_pos.z -= (headset_position.z)*scale
-                origin_sims_camera_pos = new_cam_pos
+                    vr_act()
+        else:
+            patch()
+
+    
+    old_holding_trig = holding_trig
+    if controller_state.Trigger == 0:
+        holding_trig = False
+    else:
+        holding_trig = True
+        
+    if holding_trig != old_holding_trig:
+        if holding_trig:
+            pyautogui.click()#press mouse on trigger
+        
+    old_holding_grab = holding_grab
+    if controller_state.Grip == 0:
+        holding_grab = False
+    else:
+        holding_grab = True
+        
+    #if holding_grab != old_holding_grab and vr_active:
+    #    if holding_grab:
+    #        _vpxSetInt(400, 1)#Enable Edge peek
+    #    else:
+    #        _vpxSetInt(400, 0)#Disable Edge peek
+        
+    if last_btns_press != controller_state.ButtonsPressed:
+        hold_b_button_frame_counter = 0
+        last_btns_press = controller_state.ButtonsPressed
+        dprnt("button change: "+str(last_btns_press))
+        
+        
+    #if controller_state_left.StickX > 0.5 or controller_state_left.StickX < -0.5:
+    #    game_camera_scalew += controller_state_left.StickX*0.001
+    #    vrdll.set_scale(game_camera_scalew, game_camera_scale)
+            
+    #if controller_state_left.StickY > 0.5 or controller_state_left.StickY < -0.5:
+    #    game_camera_scale += controller_state_left.StickY*0.001
+    #    vrdll.set_scale(game_camera_scalew, game_camera_scale)
+            
+    #When holding grap we move the cursor
+    mouse_speed = 20
+    if holding_grab:
+        pyautogui.moveRel(controller_state.StickX*mouse_speed, -controller_state.StickY*mouse_speed)
+    else:
+        #should move in the 3D direction of the controller but we will start with just camera direction first on the plane
+        if controller_state.StickY != 0.0:
+            if origin_sims_camera_pos != 0:
+                cos_len = math.cos(math.radians(controler_rotation.x))
+                origin_sims_camera_pos.x += math.sin(math.radians(controler_rotation.y+origin_rotate))*cos_len*0.05*controller_state.StickY
+                origin_sims_camera_pos.z += -math.cos(math.radians(controler_rotation.y+origin_rotate))*cos_len*0.05*controller_state.StickY
+                origin_sims_camera_pos.y -= math.sin(math.radians(controler_rotation.x))*0.05*controller_state.StickY
+                dprnt("controler rot: x: "+str(controler_rotation.x)+" y: "+str(controler_rotation.y))
                 vrdll.set_origin(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
-                if headset_position_uncorected != 0:
-                    headset_offset.x = headset_position_uncorected.x
-                    headset_offset.y = headset_position_uncorected.y
-                    headset_offset.z = headset_position_uncorected.z
-                    vrdll.set_offset(headset_offset.x, headset_offset.y, headset_offset.z)
+            
+        if controller_state.StickX > 0.5 or controller_state.StickX < -0.5:
+                
+            #To rotate we need to create a new reference frame
+            if headset_rotation == 0:
+                rot = 0
+            else:
+                rot = headset_rotation.y
+            origin_sims_camera_rot = get_cam_rot()
+            origin_rotate = origin_rotate+controller_state.StickX
+            vrdll.set_added_rotation(float(origin_rotate))
+            new_cam_pos = sims4.math.Vector3(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
+            new_cam_pos.x += (headset_position.x)*scale#*math.sin(math.radians(extra_rotate))
+            new_cam_pos.y += (headset_position.y)*scale#up/down
+            new_cam_pos.z -= (headset_position.z)*scale
+            origin_sims_camera_pos = new_cam_pos
+            vrdll.set_origin(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
+            if headset_position_uncorected != 0:
+                headset_offset.x = headset_position_uncorected.x
+                headset_offset.y = headset_position_uncorected.y
+                headset_offset.z = headset_position_uncorected.z
+                vrdll.set_offset(0, headset_offset.y, 0)
 
 tickers = 0
 @injector.inject_to(Zone, 'update')
@@ -960,7 +895,17 @@ def vr_zone_update(original, self, absolute_ticks):
     
     on_gfx_frame()
     
-    
+change_act = True
+@sims4.commands.Command('vrd', command_type=(sims4.commands.CommandType.Live))
+def vr_dllact(load_fresh=True,_connection=None):
+    global change_act
+    if change_act:
+        change_act = False
+        vrdll.set_vr_active(0)
+    else:
+        change_act = True
+        vrdll.set_vr_active(1)
+
 
 #Initiates VR
 @sims4.commands.Command('vra', command_type=(sims4.commands.CommandType.Live))
@@ -991,6 +936,7 @@ def vr_act(load_fresh=True,_connection=None):
         #_vpxSetInt(400, 0)#Disable Edge peek
 
         origin_sims_camera_rot = get_cam_rot()
+        origin_sims_camera_pos = get_cam_pos()
         vr_active = True
         
         orgiginal_target = camera._target_position
@@ -999,21 +945,22 @@ def vr_act(load_fresh=True,_connection=None):
         else:
             rot = headset_rotation.y
         
-        vrdll.set_vr_active(1)
+        
         origin_rotate = origin_sims_camera_rot.y-rot
         vrdll.set_added_rotation(float(origin_rotate))
         extra_rotate = 0
         
         #TODO: add correction, camera gets located inside the head of the character instead of where the headset is
         #The camera should be moved about 10cm in the camera direction from the characters head
-        origin_sims_camera_pos = get_cam_pos()
+        
         vrdll.set_origin(origin_sims_camera_pos.x, origin_sims_camera_pos.y, origin_sims_camera_pos.z)
-
+        #vrdll.set_offset(0,,0)
         if headset_position_uncorected != 0:
             headset_offset.x = headset_position_uncorected.x
             headset_offset.y = headset_position_uncorected.y
             headset_offset.z = headset_position_uncorected.z
-            vrdll.set_offset(headset_offset.x, headset_offset.y, headset_offset.z)
+            vrdll.set_offset(0, headset_offset.y, 0)#The headset 0,0,0 is on the ground?
+        vrdll.set_vr_active(1)
     patch2_togle()
 
 #Debug command to allow executing simple python commands from inside the game
@@ -1044,6 +991,11 @@ if True:
     except Exception as e:
         dprnt("Failed to connect to debug connection: "+str(e))
 
+def se(dat):
+    global s
+    global connected
+    if connected:
+        s.send(bytes(str(dat), "utf-8"))
 
 #Handle data from Debug TCP connection
 def handle_dbg_com():
@@ -1051,15 +1003,17 @@ def handle_dbg_com():
     global connected
     
     if connected:
+        cmd = ""
         try:
             cmd = s.recv(2500).decode("utf-8") 
-            try:
-                ret = str(eval(cmd))
-                s.send(bytes(ret, "utf-8"))
-            except Exception as e:
-                s.send(bytes("Exception: "+ str(e)))
         except Exception as e:
             1#no data from debug conection
+        if cmd != "":
+            try:
+                exec(cmd, globals(), globals())
+            except Exception as e:
+                se("Exception: "+ str(e))
+        
 
 dprnt("Loaded VR Mod")
 
