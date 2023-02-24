@@ -1,0 +1,47 @@
+
+void OpenVRDirectMode::PostPresentEx(IDirect3DSurface9* pDirect3DSurface9, int type)
+{
+	REFIID    surfaceID11 = __uuidof(ID3D11Texture2D);
+
+	ID3D11Texture2D* pSurface11Left;
+	ID3D11Texture2D* pSurface11Right;
+	HRESULT hr;
+	vr::EVRCompositorError error;
+	if (type == 1 || type ==3){
+		hr = g_11Consumer->Dequeue(surfaceID11, (void**)&pSurface11Left, NULL, NULL, 0);
+		if (FAILED(hr))
+		{
+			vireio::debugf("g_11Consumer->Dequeue(surfaceID11, (void**)&pSurface11Left, NULL, NULL, 0); failed: %u. \n", hr);
+			return;
+		}
+		// there's a surface ready to use
+		vr::Texture_t leftEyeTexture = { pSurface11Left, vr::TextureType_DirectX, vr::ColorSpace_Auto };
+		error = vr::VRCompositor()->Submit(vr::Eye_Left, &leftEyeTexture, &m_sTextureBounds[0]);
+
+		if (error != vr::EVRCompositorError::VRCompositorError_None)
+		{
+			vireio::debugf("EVRCompositorError: %u. \n", error);
+		}
+		g_9Producer->Enqueue(pSurface11Left, NULL, NULL, 0);
+		pSurface11Left->Release();
+	}
+	if (type == 0 || type == 3) {
+		hr = g_11Consumer->Dequeue(surfaceID11, (void**)&pSurface11Right, NULL, NULL, 0);
+		if (FAILED(hr))
+		{
+			vireio::debugf("g_11Consumer->Dequeue(surfaceID11, (void**)&pSurface11Right, NULL, NULL, 0); failed: %u. \n", hr);
+			return;
+		}
+		vr::Texture_t rightEyeTexture = { pSurface11Right, vr::TextureType_DirectX, vr::ColorSpace_Auto };
+		error = vr::VRCompositor()->Submit(vr::Eye_Right, &rightEyeTexture, &m_sTextureBounds[1]);
+
+		if (error != vr::EVRCompositorError::VRCompositorError_None)
+		{
+			vireio::debugf("EVRCompositorError: %u. \n", error);
+		}
+		g_9Producer->Enqueue(pSurface11Right, NULL, NULL, 0);
+		pSurface11Right->Release();
+	}
+
+	vr::VRCompositor()->PostPresentHandoff();
+}

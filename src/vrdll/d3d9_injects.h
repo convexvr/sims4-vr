@@ -1,0 +1,6 @@
+if (MH_CreateHook((DWORD_PTR*)dVtable[17], &IDirect3DDevice9_Present_hook, reinterpret_cast<void**>(&IDirect3DDevice9_Present_orig)) != MH_OK){vireio::debugf("failed to hook IDirect3DDevice9_Present");}
+if (MH_CreateHook((DWORD_PTR*)dVtable[23], &IDirect3DDevice9_CreateTexture_hook, reinterpret_cast<void**>(&IDirect3DDevice9_CreateTexture_orig)) != MH_OK){vireio::debugf("failed to hook IDirect3DDevice9_CreateTexture");}
+if (MH_CreateHook((DWORD_PTR*)dVtable[41], &IDirect3DDevice9_BeginScene_hook, reinterpret_cast<void**>(&IDirect3DDevice9_BeginScene_orig)) != MH_OK){vireio::debugf("failed to hook IDirect3DDevice9_BeginScene");}
+if (MH_CreateHook((DWORD_PTR*)dVtable[42], &IDirect3DDevice9_EndScene_hook, reinterpret_cast<void**>(&IDirect3DDevice9_EndScene_orig)) != MH_OK){vireio::debugf("failed to hook IDirect3DDevice9_EndScene");}
+if (MH_CreateHook((DWORD_PTR*)dVtable[45], &IDirect3DDevice9_GetTransform_hook, reinterpret_cast<void**>(&IDirect3DDevice9_GetTransform_orig)) != MH_OK){vireio::debugf("failed to hook IDirect3DDevice9_GetTransform");}
+if (MH_CreateHook((DWORD_PTR*)dVtable[47], &IDirect3DDevice9_SetViewport_hook, reinterpret_cast<void**>(&IDirect3DDevice9_SetViewport_orig)) != MH_OK){vireio::debugf("failed to hook IDirect3DDevice9_SetViewport");}
