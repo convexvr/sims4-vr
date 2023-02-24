@@ -29,6 +29,8 @@ import pyautogui
 import importlib.util
 import datetime
 
+import shutil
+
 
 
 class VPXFLOAT3(ctypes.Structure):
@@ -343,7 +345,9 @@ def tsl(_connection=None):
 
     #vr_act()#NOV-30-2022 This should not be here just for temp testing
 
-vrdll = ctypes.CDLL("C:\\Users\\me\\Documents\\projects\\vrdll\\vrdll\\x64\\Debug\\vrdll.dll")
+sims4_dir = os.getcwd()
+shutil.copyfile(ModFolder+"\\openvr_api.dll", sims4_dir+"\\openvr_api.dll")
+vrdll = ctypes.CDLL(ModFolder+"\\s4vrlib.dll")
 vrdll.set_scale.argtypes = [ctypes.c_float, ctypes.c_float]
 vrdll.set_offset.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float]
 vrdll.set_origin.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float]

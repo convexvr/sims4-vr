@@ -20,6 +20,7 @@ import shutil
 try:
     compile_src(creator_name, src_path, build_path, mods_folder, project_name)
     shutil.copyfile('assets\s4vrlib.dll', 'build\s4vrlib.dll')
+    shutil.copyfile('assets\openvr_api.dll', 'build\openvr_api.dll')
     exec(open("sync_packages.py").read())
     exec(open("bundle_build.py").read())
 except:
