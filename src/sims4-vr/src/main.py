@@ -345,8 +345,20 @@ def tsl(_connection=None):
 
     #vr_act()#NOV-30-2022 This should not be here just for temp testing
 
+
 sims4_dir = os.getcwd()
-shutil.copyfile(ModFolder+"\\openvr_api.dll", sims4_dir+"\\openvr_api.dll")
+open_vr_path = sims4_dir+"\\openvr_api.dll"
+dprnt("copying "+open_vr_path)
+if os.path.isfile(open_vr_path):
+    dprnt("openvr allready present")
+else:
+    dprnt("copying openvr to: "+open_vr_path)
+    try:
+        shutil.copyfile(ModFolder+"\\openvr_api.dll", open_vr_path)
+    except BaseException as error:
+        dprnt('An exception occurred in copyfile: {}'.format(error))
+    
+dprnt("loading vrdll")
 vrdll = ctypes.CDLL(ModFolder+"\\s4vrlib.dll")
 vrdll.set_scale.argtypes = [ctypes.c_float, ctypes.c_float]
 vrdll.set_offset.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float]
@@ -360,9 +372,9 @@ vrdll.set_follow.argtypes = [ctypes.c_int]
 vrdll.get_float_value.argtypes = [ctypes.c_int]
 vrdll.get_float_value.restype  = ctypes.c_float
 
-
+dprnt("initiating vrdll")
 vrdll.init()
-
+dprnt("initiation done")
 
 
 vrdll.set_scale(game_camera_scalew, game_camera_scale)
@@ -425,7 +437,7 @@ def call_patch():
     #jump back
     jump_to_code += b'\xFF\x25\x00\x00\x00\x00'
     jump_to_code += (code_injection_base2_address+14).to_bytes(8,'little')
-    
+    dprnt("creating patch function")
     jump_to = create_x86_x64_function(jump_to_code)
     
     injection_code = b'\xFF\x25\x00\x00\x00\x00'
@@ -435,14 +447,15 @@ def call_patch():
     
     dprnt("jmp "+hex(jump_to))
     
-    
+    dprnt("injecting patch function jump")
     process.writeByte(code_injection_base2_address, injection_code)#Write new code
-    
+    dprnt("injectied")
     process.close()
 
+dprnt("patching sims4 binary in memory")
 if using_dll:
     call_patch()
-
+dprnt("patching sims4 done")
 
 #patch() is an old function that is no longer used, should be removed
 @sims4.commands.Command('patch', command_type=(sims4.commands.CommandType.Live))
@@ -980,7 +993,7 @@ def _py(cmd: str="", cmda: str="", cmdb: str="", cmdc: str="", _connection=None)
         output("Exception: "+ str(e))
 
 
-#Initiate Debug TCP connection
+dprnt("Initiate Debug TCP connection")
 if True:
     import socket
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
