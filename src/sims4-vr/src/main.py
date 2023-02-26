@@ -29,7 +29,6 @@ import pyautogui
 import importlib.util
 import datetime
 
-import shutil
 
 
 
@@ -346,18 +345,12 @@ def tsl(_connection=None):
     #vr_act()#NOV-30-2022 This should not be here just for temp testing
 
 
-sims4_dir = os.getcwd()
-open_vr_path = sims4_dir+"\\openvr_api.dll"
-dprnt("copying "+open_vr_path)
-if os.path.isfile(open_vr_path):
-    dprnt("openvr allready present")
-else:
-    dprnt("copying openvr to: "+open_vr_path)
-    try:
-        shutil.copyfile(ModFolder+"\\openvr_api.dll", open_vr_path)
-    except BaseException as error:
-        dprnt('An exception occurred in copyfile: {}'.format(error))
-    
+open_vr_modpath = ModFolder+"\\openvr_api.dll"
+
+dprnt("loading openvr_api")
+# it is not needed in python but the dll does not know the path at which it is loaded so we load it before the dll tries to load it
+ctypes.CDLL(open_vr_modpath)
+
 dprnt("loading vrdll")
 vrdll = ctypes.CDLL(ModFolder+"\\s4vrlib.dll")
 vrdll.set_scale.argtypes = [ctypes.c_float, ctypes.c_float]

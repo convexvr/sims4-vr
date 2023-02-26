@@ -25,6 +25,7 @@ extern "C"{
 
 bool HookDirectX();
 void SetupHMDMatrixes();
+bool HookLoadLibrary();
 
 IDirect3D9Ex* SharingExDx9 = NULL;
 IDirect3DDevice9Ex* SharingExDxDevice = NULL;
@@ -38,6 +39,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 	{
 	case DLL_PROCESS_ATTACH:
 		vireio::debugf("Loaded dll");
+		HookLoadLibrary();
 	case DLL_THREAD_ATTACH:
 	case DLL_THREAD_DETACH:
 	case DLL_PROCESS_DETACH:
@@ -383,6 +385,27 @@ HMODULE WINAPI LoadLibraryW_hook(LPCSTR name) {
 	return LoadLibraryW_orig(name);
 }
 
+typedef HMODULE(WINAPI* LoadLibraryExW_)(LPCWSTR lpLibFileName, HANDLE  hFile, DWORD   dwFlags);
+LoadLibraryExW_ LoadLibraryExW_orig = 0;
+
+HMODULE WINAPI LoadLibraryExW_hook(LPCWSTR lpLibFileName,HANDLE  hFile,DWORD   dwFlags) {
+	vireio::debugf("LoadLibraryExW_hook(%ls)", lpLibFileName);
+	return LoadLibraryExW_orig(lpLibFileName, hFile, dwFlags);
+}
+
+
+
+
+typedef HMODULE(WINAPI* LoadLibraryA_)(LPCSTR name);
+LoadLibraryA_ LoadLibraryA_orig = 0;
+
+HMODULE WINAPI LoadLibraryA_hook(LPCSTR name) {
+	vireio::debugf("LoadLibraryA_hook(%ls)", name);
+	return LoadLibraryA_orig(name);
+}
+
+
+
 typedef FARPROC(WINAPI* GetProcAddress_)(HMODULE hModule, LPCSTR lpProcName);
 GetProcAddress_ GetProcAddress_orig = 0;
 
@@ -401,15 +424,40 @@ LRESULT WINAPI MsgProcs(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	}
 	return DefWindowProc(hWnd, msg, wParam, lParam);
 }
+
+
+bool HookLoadLibrary() {
+	
+	/*
+	if (MH_CreateHook(&LoadLibraryW, &LoadLibraryW_hook, reinterpret_cast<void**>(&LoadLibraryW_orig)) != MH_OK) {
+		MessageBoxA(NULL, "Failed to create LoadLibraryW hook", "Error", MB_OK);
+		return false;
+	}
+	if (MH_CreateHook(&LoadLibraryExW, &LoadLibraryExW_hook, reinterpret_cast<void**>(&LoadLibraryW_orig)) != MH_OK) {
+		MessageBoxA(NULL, "Failed to create LoadLibraryExW hook", "Error", MB_OK);
+		return false;
+	}
+	if (MH_CreateHook(&LoadLibraryA, &LoadLibraryA_hook, reinterpret_cast<void**>(&LoadLibraryA_orig)) != MH_OK) {
+		MessageBoxA(NULL, "Failed to create LoadLibraryA hook", "Error", MB_OK);
+		return false;
+	}
+	if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
+		MessageBoxA(NULL, "Failed to enable hooks", "Error", MB_OK);
+		return NULL;
+	}
+	*/
+
+}
+
 bool HookDirectX() {
 
 
 
-	
 	if (MH_Initialize() != MH_OK) {
 		MessageBoxA(NULL, "Failed to initialize MinHook", "Error", MB_OK);
 		return false;
 	}
+	
 	
 
 	//Create fake window that SharingExDx9 needs.
@@ -469,12 +517,9 @@ bool HookDirectX() {
 	//DWORD* dVtable = (DWORD*)device;
 	//dVtable = (DWORD*)dVtable[0]; // == *d3ddev
 #endif
-	/*
-	if (MH_CreateHook(&LoadLibraryW, &LoadLibraryW_hook, reinterpret_cast<void**>(&LoadLibraryW_orig)) != MH_OK) {
-		MessageBoxA(NULL, "Failed to create LoadLibraryW hook", "Error", MB_OK);
-		return false;
-	}
+	
 
+	/*
 	if (MH_CreateHook(&GetProcAddress, &GetProcAddress_hook, reinterpret_cast<void**>(&GetProcAddress_orig)) != MH_OK) {
 		MessageBoxA(NULL, "Failed to create GetProcAddress hook", "Error", MB_OK);
 		return false;
