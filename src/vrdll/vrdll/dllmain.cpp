@@ -446,7 +446,7 @@ bool HookLoadLibrary() {
 		return NULL;
 	}
 	*/
-
+	return false;
 }
 
 bool HookDirectX() {

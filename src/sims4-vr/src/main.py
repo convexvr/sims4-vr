@@ -349,10 +349,20 @@ open_vr_modpath = ModFolder+"\\openvr_api.dll"
 
 dprnt("loading openvr_api")
 # it is not needed in python but the dll does not know the path at which it is loaded so we load it before the dll tries to load it
-ctypes.CDLL(open_vr_modpath)
+try:
+    ctypes.CDLL(open_vr_modpath)
+except Exception as e:
+    dprnt("could not load openvr_api.dll: "+ str(e))
 
-dprnt("loading vrdll")
-vrdll = ctypes.CDLL(ModFolder+"\\s4vrlib.dll")
+vr_dll_modpath = ModFolder+"\\s4vrlib.dll"
+dprnt("loading vrdll: "+vr_dll_modpath)
+vrdll = False
+try:
+    vrdll = ctypes.CDLL(vr_dll_modpath)
+except Exception as e:
+    dprnt("could not load vrdll: "+ str(e))
+    exit
+
 vrdll.set_scale.argtypes = [ctypes.c_float, ctypes.c_float]
 vrdll.set_offset.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float]
 vrdll.set_origin.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float]
