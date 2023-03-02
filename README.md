@@ -16,13 +16,19 @@ https://github.com/convexvr/sims4-vr/releases/download/release/convexvr_sims4-vr
 
 Unzip the **convexvr_sims4-vr-bundle.zip** zip file and place the **convexvr_sims4-vr** folder in the mods folder  **C:\Users\\$USER\Documents\Electronic Arts\The Sims 4\Mods**
 
+Install the Microsoft Visual C++ Redistributable
+https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2015-2017-2019-and-2022
 
-### Sims 4 settings(The refresh rate is important!):
+
+### Sims 4 settings(The refresh rate is important, set as high as posible!):
 ```
 Resolution:  1024x768
 Display type: Fullscreen
 Refresh rate: 75
 ```
+*Note it might be posible to edit C:\Users\$USER\Documents\Electronic Arts\The Sims 4 to get a higher refresh rate. Twice the refresh rate of your headset is optimal.(To get one picture per eye to your headset)
+
+*The optimal resolution is the resolution for each eye of your headset 1,832 x 1920 on Quest 2.
 
 ## Usage
 1. Install mod and enable custom contents and script mods in sims 4 settings menu.
