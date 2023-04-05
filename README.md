@@ -20,6 +20,7 @@ Install the Microsoft Visual C++ Redistributable
 https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#visual-studio-2015-2017-2019-and-2022
 
 
+
 ### Sims 4 settings(The refresh rate is important, set as high as posible!):
 ```
 Resolution:  1024x768
@@ -36,6 +37,9 @@ Refresh rate: 75
 3. Start Sims4 
 4. When playing press the B-button on your oculus controller once quickly to initate VR mode
 
+If there is errors look at the log file:
+C:\Users\\$USER\Documents\Electronic Arts\The Sims 4\Mods\convexvr_sims4-vr\debug_log.txt
+
 ## Controls
 ### Right hand oculus controller
 
@@ -51,6 +55,25 @@ Oculus Trigger button: mouse press
 ```
 Move camera and mouse by pointing and shooting with controller.
 Need to record a small video to show the mod.
-Improve FPS.
+Fix stereo view, currently each frame is renderd one after the other. This causes defects in the render due to movments in the time between right and left frame render.
+
 Fix controls. Version 2 of the mod that is VorpX Free, has bad controls.
 ```
+
+
+## Files 
+
+
+#### sims4-vr/src/vrdll/
+Contains the dll that manages the openvr api calls and moves the cammera
+
+sims4-vr/src/vrdll/vrdll.sln
+Is the visual studio 2022 solution file for the dll.
+Building requires directx9 sdk, called: "Microsoft DirectX SDK (June 2010)"
+
+#### sims4-vr/src/sims4-vr/src/
+The sims4 python plugin that loads the dll and does sims4 stuff. 
+
+run sims4-vr/src/sims4-vr/compile.py to compile the mod, requires python 3.7.9 (same version of python as sism4 uses)
+
+
