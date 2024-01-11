@@ -23,11 +23,14 @@ https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=ms
 
 ### Sims 4 settings(The refresh rate is important, set as high as posible!):
 ```
-Resolution:  1024x768
+Resolution:  as close to you headset as you can
 Display type: Fullscreen
-Refresh rate: 75
+Refresh rate: As high as you can
 ```
-*Note it might be posible to edit C:\Users\$USER\Documents\Electronic Arts\The Sims 4 to get a higher refresh rate. Twice the refresh rate of your headset is optimal.(To get one picture per eye to your headset)
+
+It is posible to force resolutions by editing C:\Users\ $USER \Documents\Electronic Arts\The Sims 4\Options.ini to get a higher refresh rate and higher resolution.
+Alter the variables "resolutionheight", "resolutionwidth" and "resolutionrefresh" to desired values. Then right click the file in the file browser open file properties and set the file to "read only".
+Twice the refresh rate of your headset is optimal.(To get one picture per eye to your headset)
 
 *The optimal resolution is the resolution for each eye of your headset 1,832 x 1920 on Quest 2.
 
