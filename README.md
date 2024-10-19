@@ -1,6 +1,18 @@
 # sims4-vr
 Sims 4 plugin that adds VR functionality to sims 4.
-### It allows you to walk around in sims 4 and do all the things that your sims do in person.
+
+
+## Status
+
+Under 2024 Maxis updated sims 4 to use directX 11 instead of directx 9.
+This means that the mod wont work properly anymore.
+
+**TODO:**
+- Find the new functions that configure the camera and render the 3d image. This can be done with cheat engine; or preferably by decompiling the executable.
+- The fact that debug symbols is not avalible for the sims4 executable makes this a major task. If you have a debug build of Sims4 contact @convexvr and we could get the mod working in notime.
+
+
+## The mod allows you to walk around in sims 4 and do all the things that your sims do in person.
 
 Built for oculus quest 2 but should work with other steamvr compatible headsets to.
 
